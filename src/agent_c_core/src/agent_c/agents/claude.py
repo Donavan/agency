@@ -42,8 +42,7 @@ class ClaudeChatAgent(BaseAgent):
         kwargs['token_counter'] = kwargs.get('token_counter', ClaudeChatAgent.ClaudeTokenCounter())
         super().__init__(**kwargs)
         self.client: AsyncAnthropic = kwargs.get("client", AsyncAnthropic())
-        self.supports_multimodal = True
-        self.can_use_tools = True
+
 
     @classmethod
     def default_client(cls):

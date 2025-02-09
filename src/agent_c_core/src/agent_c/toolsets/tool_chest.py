@@ -1,8 +1,7 @@
 import copy
 import logging
-from typing import Type, List, Union
 
-from pyarrow.ipc import new_stream
+from typing import Type, List, Union
 
 from agent_c.prompting.basic_sections.tool_guidelines import EndToolGuideLinesSection, BeginToolGuideLinesSection
 from agent_c.prompting.prompt_section import PromptSection

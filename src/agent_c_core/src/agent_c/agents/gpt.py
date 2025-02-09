@@ -50,27 +50,29 @@ class GPTChatAgent(BaseAgent):
         kwargs['model_name'] = kwargs.get('model_name', "gpt-4o")
         kwargs['token_counter'] = kwargs.get('token_counter', TikTokenTokenCounter())
         super().__init__(**kwargs)
-        self.schemas: Union[None, List[Dict[str, Any]]] = None
-        if kwargs.get("client", None) is None:
-            if os.environ.get("AZURE_OPENAI_ENDPOINT", None) is not None and os.environ.get("AZURE_OPENAI_API_KEY", None) is not None:
-                self.client = AsyncAzureOpenAI(azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
-                                               api_key=os.environ["AZURE_OPENAI_API_KEY"],
-                                               api_version=os.environ.get("AZURE_OPENAI_API_VERSION", "2024-03-01-preview"))
-                self.model_name = os.environ.get("AZURE_OPENAI_MODEL", self.model_name)
-            else:
-                self.client = kwargs.get("client", AsyncOpenAI())
-
-        self.encoding = tiktoken.encoding_for_model('gpt-3.5-turbo')
-        self.can_use_tools = True
-        self.supports_multimodal = True
+        if self.client is None:
+            self.client = self.__class__.default_client()
 
         # Temporary until all the models support this
         if self.model_name in self.__class__.REASONING_MODELS:
             self.root_message_role = "developer"
 
+    @property
+    def token_counter(self) -> TokenCounter:
+        if self._token_counter is None:
+            self._token_counter = TikTokenTokenCounter()
+
+        return self._token_counter
+
     @classmethod
     def default_client(cls):
-        return AsyncOpenAI()
+        if (os.environ.get("AZURE_OPENAI_ENDPOINT", None) is not None and
+            os.environ.get("AZURE_OPENAI_API_KEY", None) is not None):
+            return AsyncAzureOpenAI(azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
+                                           api_key=os.environ["AZURE_OPENAI_API_KEY"],
+                                           api_version=os.environ.get("AZURE_OPENAI_API_VERSION", "2024-08-01-preview"))
+        else:
+            return AsyncOpenAI()
 
     def _generate_multi_modal_user_message(self, user_input: str, images: List[ImageInput], audio_clips: List[AudioInput]) -> Union[List[dict[str, Any]], None]:
         contents = []

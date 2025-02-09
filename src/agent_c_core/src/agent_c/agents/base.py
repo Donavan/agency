@@ -46,23 +46,27 @@ class BaseAgent:
         max_delay: int, default is 10
             Maximum delay for exponential backoff.
         """
-        self.semaphore: Semaphore = asyncio.Semaphore(self.concurrency_limit)
+        self._token_counter = None
+        self.can_use_tools: bool = True
+        self.supports_multimodal: bool = True
         self.concurrency_limit: int = kwargs.get("concurrency_limit", 3)
+        self.semaphore: Semaphore = asyncio.Semaphore(self.concurrency_limit)
         self.model_name: str = kwargs.get("model_name")
+        self.client: Any = kwargs.get("client", None)
         self.temperature: float = kwargs.get("temperature", 0.5)
         self.max_delay: int = kwargs.get("max_delay", 10)
-        self.tool_chest: ToolChest = kwargs.get("tool_chest", ToolChest(tool_classes=[]))
-        self.tool_chest.agent = self
+        self.tool_chest: ToolChest = kwargs.get("tool_chest", ToolChest.default())
         self.prompt: Optional[str] = kwargs.get("prompt", None)
         self.prompt_builder: Optional[PromptBuilder] = kwargs.get("prompt_builder", None)
         self.streaming_callback: Optional[Callable[[ChatEvent], Awaitable[None]]] = kwargs.get("streaming_callback", None)
-        self.can_use_tools: bool = False
-        self.supports_multimodal: bool = False
-        self.token_counter: TokenCounter = kwargs.get("token_counter", TokenCounter())
         self.root_message_role: str =  kwargs.get( "root_message_role", os.environ.get("ROOT_MESSAGE_ROLE", "system"))
 
-        if TokenCounter.counter() is None:
-            TokenCounter.set_counter(self.token_counter)
+    @property
+    def token_counter(self) -> TokenCounter:
+        if self._token_counter is None:
+            self._token_counter = TokenCounter()
+
+        return self._token_counter
 
     @classmethod
     def default_client(cls):
