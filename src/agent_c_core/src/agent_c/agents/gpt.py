@@ -48,9 +48,6 @@ class GPTChatAgent(BaseAgent):
             The client to use for making requests to the Open AI API.
         """
         super().__init__(**kwargs)
-        if self.client is None:
-            self.client = self.__class__.default_client()
-
         # Temporary until all the models support this
         if self.model_name in self.__class__.REASONING_MODELS:
             self.root_message_role = "developer"
