@@ -61,6 +61,9 @@ class BaseAgent:
         self.streaming_callback: Optional[Callable[[ChatEvent], Awaitable[None]]] = kwargs.get("streaming_callback", None)
         self.root_message_role: str =  kwargs.get( "root_message_role", os.environ.get("ROOT_MESSAGE_ROLE", "system"))
 
+        if self.client is None:
+            self.client = self.__class__.default_client()
+
     @property
     def token_counter(self) -> TokenCounter:
         if self._token_counter is None:

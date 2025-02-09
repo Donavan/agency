@@ -31,18 +31,13 @@ class ClaudeChatAgent(BaseAgent):
             return response.input_tokens
 
 
-    def __init__(self, **kwargs) -> None:
-        """
-        Initialize ChatAgent object.
 
-        Non-Base Parameters:
-        client: AsyncAnthropic, default is AsyncAnthropic()
-            The client to use for making requests to the Anthropic API.
-        """
-        kwargs['token_counter'] = kwargs.get('token_counter', ClaudeChatAgent.ClaudeTokenCounter())
-        super().__init__(**kwargs)
-        self.client: AsyncAnthropic = kwargs.get("client", AsyncAnthropic())
+    @property
+    def token_counter(self) -> TokenCounter:
+        if self._token_counter is None:
+            self._token_counter = ClaudeChatAgent.ClaudeTokenCounter()
 
+        return self._token_counter
 
     @classmethod
     def default_client(cls):

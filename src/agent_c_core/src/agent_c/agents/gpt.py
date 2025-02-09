@@ -47,8 +47,6 @@ class GPTChatAgent(BaseAgent):
         client: AsyncOpenAI, default is AsyncOpenAI()
             The client to use for making requests to the Open AI API.
         """
-        kwargs['model_name'] = kwargs.get('model_name', "gpt-4o")
-        kwargs['token_counter'] = kwargs.get('token_counter', TikTokenTokenCounter())
         super().__init__(**kwargs)
         if self.client is None:
             self.client = self.__class__.default_client()
