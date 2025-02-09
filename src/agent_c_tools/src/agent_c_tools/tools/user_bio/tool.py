@@ -1,7 +1,7 @@
 from typing import Any, Union
 
 from agent_c.toolsets import json_schema, Toolset
-from agent_c_tools.tools.user_bio.prompt import UserBioSection, UserBioSectionNoToolUse
+from agent_c_tools.tools.user_bio.prompt import UserBioSection
 
 class UserBioTools(Toolset):
     """

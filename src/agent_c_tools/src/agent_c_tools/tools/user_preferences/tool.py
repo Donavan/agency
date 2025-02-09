@@ -2,7 +2,7 @@ import json
 from typing import Optional, List, Dict, Any
 from agent_c.toolsets import json_schema, Toolset
 from agent_c_tools.tools.user_preferences import UserPreference
-from agent_c_tools.tools.user_preferences.prompt import UserPrefSection, UserPrefSectionNoToolUse
+from agent_c_tools.tools.user_preferences.prompt import UserPrefSection
 
 
 class PreferenceTools(Toolset):
