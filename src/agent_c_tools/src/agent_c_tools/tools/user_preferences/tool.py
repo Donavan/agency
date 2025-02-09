@@ -21,13 +21,8 @@ class PreferenceTools(Toolset):
         super().__init__(**kwargs, name='prefs', need_tool_user=False)
         self.user_preferences: List[UserPreference] = kwargs.get('user_preferences', [])
 
-        if self.agent_can_use_tools:
-            pref_cls = UserPrefSection
-        else:
-            pref_cls = UserPrefSectionNoToolUse
-
         # Note: user preferences is passed as a list, the ones that are visible to the model are provided via a callback
-        self.section = kwargs.get('section', pref_cls(user_preferences=self.user_preferences, model_preferences=self.get_model_prefs))
+        self.section = kwargs.get('section', UserPrefSection(user_preferences=self.user_preferences, model_preferences=self.get_model_prefs))
 
     def find_preference_by_name(self, name: str) -> Optional[UserPreference]:
         """Find a user preference by its name.

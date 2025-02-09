@@ -124,7 +124,7 @@ class GradioChat:
         #                         `Operating Guidelines` portion of the prompt. So "from not on talk like a pirate" works just fine.
         self.user_prefs: List[UserPreference] = [AddressMeAsPreference(), AssistantPersonalityPreference()]
 
-        self.can_use_tools = True
+
 
     def __locate_personas(self):
         try:
@@ -748,7 +748,6 @@ class GradioChat:
 
     async def __init_claude_chat_agent(self):
         self.logger.debug("Initializing Claude Chat Agent...")
-        self.can_use_tools = True
         self.tool_chest = ToolChest(tool_classes=[
             tool for tool in Toolset.tool_registry
             if tool.__name__ in self.selected_tools
@@ -757,8 +756,7 @@ class GradioChat:
         # we can send them the whole bag of options without worry.
         tool_opts = {'tool_cache': self.tool_cache, 'session_manager': self.session_manager,
                      'user_preferences': self.user_prefs,
-                     'workspaces': self.workspaces, 'streaming_callback': self.chat_callback,
-                     'agent_can_use_tools': self.can_use_tools}
+                     'workspaces': self.workspaces, 'streaming_callback': self.chat_callback}
 
         await self.tool_chest.init_tools(**tool_opts)
         active_tools = list(self.tool_chest.active_tools.keys())

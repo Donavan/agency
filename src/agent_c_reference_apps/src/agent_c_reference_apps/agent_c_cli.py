@@ -83,7 +83,7 @@ class CLIChat:
         #                         `Operating Guidelines` portion of the prompt. So "from not on talk like a pirate" works just fine.
         self.user_prefs: List[UserPreference] = [AddressMeAsPreference(), AssistantPersonalityPreference()]
         self.current_chat_log: Union[list[dict], None] = None
-        self.can_use_tools = True
+
 
     def __init_workspaces(self):
         self.logger.debug("Initializing Workspaces...")
@@ -222,13 +222,13 @@ class CLIChat:
             PersonaSection(template=persona_prompt),
             EndOperatingGuideLinesSection()
         ]
-        self.can_use_tools = False
+
         self.tool_chest = ToolChest()
 
         # These are the default and extra options for the various toolsets, since the toolsets all use kwargs
         # we can send them the whole bag of options without worry.
         tool_opts = {'tool_cache': self.tool_cache, 'session_manager': self.session_manager, 'user_preferences': self.user_prefs,
-                     'workspaces': self.workspaces, 'streaming_callback': self.chat_callback, 'agent_can_use_tools': self.can_use_tools}
+                     'workspaces': self.workspaces, 'streaming_callback': self.chat_callback}
 
         await self.tool_chest.init_tools(**tool_opts)
 

@@ -1,8 +1,7 @@
 from typing import Any
 
-from agent_c.prompting.prompt_section import PromptSection, property_bag_item
 from agent_c.chat.session_manager import ChatSessionManager
-
+from agent_c.prompting.prompt_section import PromptSection, property_bag_item
 
 class UserBioSection(PromptSection):
     session_manager: ChatSessionManager
@@ -34,12 +33,3 @@ class UserBioSection(PromptSection):
     async def lastname(self):
         return self.session_manager.user.last_name
 
-
-class UserBioSectionNoToolUse(UserBioSection):
-    def __init__(self, **data: Any):
-        TEMPLATE = ("This section provides information about the user that you can use to customize your responses.\n"
-                    "It includes information from the user database as well as any metadata recorded about the user.\n"
-                    "\n### System provided data (User)\n- User ID: ${userid}\n- First Name: ${firstname}\n- Last Name: ${lastname}\n\n"
-                    "\n### User metadata\n"
-                    "```yaml\n${user_kvps}\n```\nIf asked to display the user bio data, user metadata or assistant data for the user, give the user the above code block.\n")
-        super().__init__(template=TEMPLATE, **data)

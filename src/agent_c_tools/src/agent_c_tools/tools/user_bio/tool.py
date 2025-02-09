@@ -15,13 +15,8 @@ class UserBioTools(Toolset):
             **kwargs (Any): Keyword arguments including those for ZepDependentToolset.
         """
         super().__init__(**kwargs, name='userbio', need_tool_user=False)
+        self.section = kwargs.get('section', UserBioSection(session_manager=self.session_manager))
 
-        if self.agent_can_use_tools:
-            section_cls = UserBioSection
-        else:
-            section_cls = UserBioSectionNoToolUse
-
-        self.section = kwargs.get('section', section_cls(session_manager=self.session_manager))
 
     @json_schema(
         (

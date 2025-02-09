@@ -25,13 +25,3 @@ class UserPrefSection(PromptSection):
     @property_bag_item
     async def pref_names(self):
         return ', '.join(f"`{pref.name}`" for pref in self.user_preferences)
-
-
-class UserPrefSectionNoToolUse(UserPrefSection):
-    def __init__(self, **data: Any):
-        TEMPLATE = ("Pay careful attention to the following user preferences as they include special instructions for you to follow based on their value: \n"
-                    "Each preference is listed as `name`: `value`, default: `default_value`. The line following each contains directions for you to fallow based on this preference"
-                    "${prefs_model_instructions}\n\n"
-                    )
-
-        super().__init__(template=TEMPLATE,  **data)

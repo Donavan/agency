@@ -36,8 +36,6 @@ class Toolset:
                 required_tools (List[str]): A list of tools that are required to be activated.
                 tool_cache (ToolCache): Cache for tools.
                 section (PromptSection | None): Section-related information.
-                agent_can_use_tools (bool): If the agent can use toolsets (defaults to True if unset).
-                need_tool_user (bool): Defines if this toolset requires a tool-using agent (defaults to True).
                 needed_keys (List[str]): List of environment keys required for the toolset functionality.
                 streaming_callback (Callable[..., None]): A callback to be triggered after streaming events.
                 output_format (str): Format for output. Defaults to 'raw'.
@@ -62,17 +60,9 @@ class Toolset:
         self.tool_cache: ToolCache = kwargs.get("tool_cache")
         self.section: Union[PromptSection, None] = kwargs.get('section')
 
-        # Agent capabilities and tool requirements
-        self.agent_can_use_tools: bool = kwargs.get("agent_can_use_tools", True)
-        self.need_tool_user: bool = kwargs.get("need_tool_user", True)
-
         # Validate environment variables
         needed_keys: List[str] = kwargs.get('needed_keys', [])
         self.tool_valid: bool = self._validate_env_keys(needed_keys)
-
-        # If toolset requires a tool-using agent but the agent cannot use tools, invalid toolset
-        if self.need_tool_user and not self.agent_can_use_tools:
-            self.tool_valid = False
 
         self.openai_schemas: List[Dict[str, Any]] = self.__openai_schemas()
 

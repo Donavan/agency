@@ -20,7 +20,7 @@ dependencies = [
     "requests==2.32.3",     # web_search-hacker_news, Youtube_Comments/Search
     "newsapi-python==0.2.7",# web_search-news_api
     "beautifulsoup4==4.12.3",# web_search-seeking_alpha
-    "aiohttp==3.10.10",# web_search-seeking_alpha
+    "aiohttp==3.11.12",# web_search-seeking_alpha
     "tavily-python==0.5.0", # web_search-tavily
     "wikipedia==1.4.0",    # web_search-wikipedia
     "lxml_html_clean"

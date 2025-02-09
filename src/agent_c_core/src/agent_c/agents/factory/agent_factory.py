@@ -32,4 +32,4 @@ class AgentFactory:
         agent_obj = agent_cls(client=self._backend_client_map[request.backend], **request.agent_params.model_dump())
 
 
-        return
+        return agent_obj
