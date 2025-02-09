@@ -269,27 +269,6 @@ class BaseAgent:
 
         return message_array
 
-    async def _call_function(self, tool_chest, function_id: str, function_args: Dict) -> Any:
-        """
-        Call a function asynchronously.
-
-        Parameters:
-        function_id: str
-            Identifies the function to be called.
-        function_args: Dict
-            Arguments for the function to be called.
-
-        Returns: The function call result.
-        """
-        toolset, function_name = function_id.split(Toolset.tool_sep, 1)
-        try:
-            src_obj: Toolset = tool_chest.active_tools[toolset]
-            if src_obj is None:
-                return f"{toolset} is not a valid toolset."
-
-            function_to_call: Any = getattr(src_obj, function_name)
-
-            return await function_to_call(**function_args)
-        except Exception as e:
-            logging.exception(f"Failed calling {function_name} on {toolset}. {e}")
-            return f"Important!  Tell the user an error occurred calling {function_name} on {toolset}. {e}"
+    @staticmethod
+    async def _call_function(self, tool_chest, function_id: str, function_args: Dict) -> str:
+        return await tool_chest.call_function(function_id, function_args)

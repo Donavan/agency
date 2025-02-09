@@ -1,7 +1,7 @@
 import copy
 import logging
 
-from typing import Type, List, Union
+from typing import Type, List, Union, Dict, Callable
 
 from agent_c.prompting.basic_sections.tool_guidelines import EndToolGuideLinesSection, BeginToolGuideLinesSection
 from agent_c.prompting.prompt_section import PromptSection
@@ -162,3 +162,28 @@ class ToolChest:
             self.__active_open_ai_schemas += toolset.openai_schemas
 
 
+    async def _call_function(self, function_id: str, function_args: Dict) -> str:
+        """
+        Call a function asynchronously.
+
+        Parameters:
+        function_id: str
+            Identifies the function to be called.
+        function_args: Dict
+            Arguments for the function to be called.
+
+        Returns: The function call result.
+        """
+        toolset, function_name = function_id.split(Toolset.tool_sep, 1)
+        try:
+            src_obj: Toolset = self.active_tools[toolset]
+            if src_obj is None:
+                return f"{toolset} is not a valid toolset."
+
+            function_to_call = getattr(src_obj, function_name)
+
+            return await function_to_call(**function_args)
+
+        except Exception as e:
+            logging.exception(f"Failed calling {function_name} on {toolset}. {e}")
+            return f"Important!  Tell the user an error occurred calling {function_name} on {toolset}. {e}"

@@ -29,6 +29,7 @@ class AgentFactory:
             raise ValueError(f"No client available for backend {request.backend}")
 
         agent_cls = self.__backend_to_agent_map.get(request.backend)
+        agent_obj = agent_cls(client=self._backend_client_map[request.backend], **request.agent_params.model_dump())
 
 
         return

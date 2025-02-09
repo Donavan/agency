@@ -42,10 +42,6 @@ class GPTChatAgent(BaseAgent):
     def __init__(self, **kwargs) -> None:
         """
         Initialize ChatAgent object.
-
-        Non-Base Parameters:
-        client: AsyncOpenAI, default is AsyncOpenAI()
-            The client to use for making requests to the Open AI API.
         """
         super().__init__(**kwargs)
         # Temporary until all the models support this
