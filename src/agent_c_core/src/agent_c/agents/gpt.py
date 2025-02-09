@@ -68,6 +68,9 @@ class GPTChatAgent(BaseAgent):
         if self.model_name in self.__class__.REASONING_MODELS:
             self.root_message_role = "developer"
 
+    @classmethod
+    def default_client(cls):
+        return AsyncOpenAI()
 
     def _generate_multi_modal_user_message(self, user_input: str, images: List[ImageInput], audio_clips: List[AudioInput]) -> Union[List[dict[str, Any]], None]:
         contents = []

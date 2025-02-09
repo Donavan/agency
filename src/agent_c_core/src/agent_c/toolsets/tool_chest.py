@@ -40,6 +40,16 @@ class ToolChest:
         self.__tool_sections: List[PromptSection] = []
         self.__active_open_ai_schemas: List[dict] = []
 
+    @classmethod
+    def default(cls):
+        """
+        Creates a default instance of the ToolChest.
+
+        Returns:
+            ToolChest: A default instance of the ToolChest.
+        """
+        return cls(tool_classes=[])
+
     # Placeholder
     def activate_tool(self, tool_name: str) -> bool:
         """

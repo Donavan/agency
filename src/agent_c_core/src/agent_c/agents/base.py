@@ -46,18 +46,16 @@ class BaseAgent:
         max_delay: int, default is 10
             Maximum delay for exponential backoff.
         """
+        self.semaphore: Semaphore = asyncio.Semaphore(self.concurrency_limit)
+        self.concurrency_limit: int = kwargs.get("concurrency_limit", 3)
         self.model_name: str = kwargs.get("model_name")
         self.temperature: float = kwargs.get("temperature", 0.5)
         self.max_delay: int = kwargs.get("max_delay", 10)
-        self.concurrency_limit: int = kwargs.get("concurrency_limit", 3)
-        self.semaphore: Semaphore = asyncio.Semaphore(self.concurrency_limit)
         self.tool_chest: ToolChest = kwargs.get("tool_chest", ToolChest(tool_classes=[]))
         self.tool_chest.agent = self
         self.prompt: Optional[str] = kwargs.get("prompt", None)
         self.prompt_builder: Optional[PromptBuilder] = kwargs.get("prompt_builder", None)
-        self.schemas: Union[None, List[Dict[str, Any]]] = None
         self.streaming_callback: Optional[Callable[[ChatEvent], Awaitable[None]]] = kwargs.get("streaming_callback", None)
-        self.mitigate_image_prompt_injection: bool = kwargs.get("mitigate_image_prompt_injection", False)
         self.can_use_tools: bool = False
         self.supports_multimodal: bool = False
         self.token_counter: TokenCounter = kwargs.get("token_counter", TokenCounter())
@@ -65,6 +63,10 @@ class BaseAgent:
 
         if TokenCounter.counter() is None:
             TokenCounter.set_counter(self.token_counter)
+
+    @classmethod
+    def default_client(cls):
+        raise NotImplementedError
 
     def count_tokens(self, text: str) -> int:
         return self.token_counter.count_tokens(text)

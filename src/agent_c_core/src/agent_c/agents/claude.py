@@ -45,7 +45,9 @@ class ClaudeChatAgent(BaseAgent):
         self.supports_multimodal = True
         self.can_use_tools = True
 
-
+    @classmethod
+    def default_client(cls):
+        return AsyncAnthropic()
 
     async def __interaction_setup(self, **kwargs) -> dict[str, Any]:
         model_name: str = kwargs.get("model_name", self.model_name)
@@ -177,9 +179,6 @@ class ClaudeChatAgent(BaseAgent):
 
         return messages
 
-
-
-
     def _generate_multi_modal_user_message(self, user_input: str, images: List[ImageInput], audio: List[AudioInput]) -> Union[List[dict[str, Any]], None]:
         contents = []
         for image in images:
@@ -190,12 +189,7 @@ class ClaudeChatAgent(BaseAgent):
             img_source = {"type": "base64", "media_type": image.content_type, "data": image.content}
             contents.append({"type": "image", "source": img_source})
 
-        if self.mitigate_image_prompt_injection:
-            text = f"User: {user_input}{BaseAgent.IMAGE_PI_MITIGATION}"
-        else:
-            text = user_input
-
-        contents.append({"type": "text", "text": text})
+        contents.append({"type": "text", "text": user_input})
 
         return [{"role": "user", "content": contents}]
 
