@@ -3,7 +3,7 @@ import copy
 import logging
 
 from typing import Any, List, Union, Dict
-from anthropic import AsyncAnthropic, APITimeoutError, Anthropic
+from anthropic import AsyncAnthropic, APITimeoutError, Anthropic, AnthropicBedrock
 
 from agent_c.agents.base import BaseAgent
 from agent_c.chat.session_manager import ChatSessionManager
@@ -237,3 +237,9 @@ class ClaudeChatAgent(BaseAgent):
 
         return [{'role': 'assistant', 'content': list(ai_calls)},
                 {'role': 'user', 'content': list(results)}]
+
+
+class ClaudeBedrockChatAgent(ClaudeChatAgent):
+    @classmethod
+    def default_cloud_client(cls):
+        return AnthropicBedrock()

@@ -57,13 +57,7 @@ class GPTChatAgent(BaseAgent):
 
     @classmethod
     def default_client(cls):
-        if (os.environ.get("AZURE_OPENAI_ENDPOINT", None) is not None and
-            os.environ.get("AZURE_OPENAI_API_KEY", None) is not None):
-            return AsyncAzureOpenAI(azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
-                                           api_key=os.environ["AZURE_OPENAI_API_KEY"],
-                                           api_version=os.environ.get("AZURE_OPENAI_API_VERSION", "2024-08-01-preview"))
-        else:
-            return AsyncOpenAI()
+        return AsyncOpenAI()
 
     def _generate_multi_modal_user_message(self, user_input: str, images: List[ImageInput], audio_clips: List[AudioInput]) -> Union[List[dict[str, Any]], None]:
         contents = []
@@ -368,3 +362,13 @@ class GPTChatAgent(BaseAgent):
         ai_calls, results = zip(*completed_calls)
 
         return [{'role': 'assistant', 'tool_calls': list(ai_calls), 'content': ''}] + list(results)
+
+class AzureOpenAIChatAgent(GPTChatAgent):
+    @classmethod
+    def default_client(cls):
+        if os.environ.get("AZURE_OPENAI_ENDPOINT", None) is not None and os.environ.get("AZURE_OPENAI_API_KEY", None) is not None:
+            return AsyncAzureOpenAI(azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
+                                    api_key=os.environ["AZURE_OPENAI_API_KEY"],
+                                    api_version=os.environ.get("AZURE_OPENAI_API_VERSION", "2024-08-01-preview"))
+        else:
+            raise ValueError("AZURE_OPENAI_ENDPOINT and/or AZURE_OPENAI_API_KEY not found in environment variables. (might wanna check AZURE_OPENAI_API_VERSION as well)")
