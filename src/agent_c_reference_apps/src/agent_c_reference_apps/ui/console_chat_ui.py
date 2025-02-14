@@ -183,11 +183,16 @@ class ConsoleChatUI:
                     combined = b''.join(byte_chunks)
                     audio_input = AudioInput.from_bytes_as_wav(combined, channels=start_event.channels, sample_rate=start_event.sample_rate,
                                                                id=start_event.id)
+                    try:
+                        result = self.whisper_model.transcribe(audio_input.as_nd_array())
+                        audio_input.transcript = result["text"]
+                    except Exception as e:
+                        self.system_message(f"Error transcribing audio: {e}")
+                        audio_input.transcript = "Error transcribing audio"
                     if self.model_accepts_audio_event.is_set():
                         return audio_input
 
-                    result = self.whisper_model.transcribe(audio_input.as_nd_array())
-                    return TextInput(content=result["text"])
+                    return TextInput(content=audio_input.transcript)
 
             await asyncio.sleep(0.01)
 

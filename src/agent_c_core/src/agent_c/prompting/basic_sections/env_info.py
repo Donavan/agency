@@ -27,6 +27,7 @@ class EnvironmentInfoSection(PromptSection):
     session_manager: ChatSessionManager
     env_rules: Optional[Dict[str, str]] = None
     voice_tools: Optional[Any] = None
+    agent_voice: Optional[str]
 
     def __init__(self, **data: Any) -> None:
         """
@@ -74,11 +75,21 @@ class EnvironmentInfoSection(PromptSection):
         session_meta_str = '\n'.join([f'{k}: {v}' for k, v in session_meta.items()])
 
         created_at = self.session_manager.chat_session.created_at.replace("UTC", "").replace("utc", "")
+        memory = self.session_manager.active_memory
+        memory_summary = "No summary available."
+        memory_context = "No context available."
+        if memory.summary is not None:
+            memory_summary = memory.summary.content
+        if memory.context is not None:
+            memory_context = memory.context
+
         return (
             f"### Session Info\n"
             f"Session ID: {self.session_manager.chat_session.session_id}\n"
             f"Session started: {created_at}\n"
-            f"#### Session Metadata\n{session_meta_str}"
+            f"#### Session Metadata\n{session_meta_str}\n"
+            f"#### Memory Summary\n{memory_summary}\n"
+            f"#### Memory Context\n{memory_context}\n"
         )
 
     @property_bag_item
@@ -141,6 +152,16 @@ class EnvironmentInfoSection(PromptSection):
                 f"Name: {self.voice_tools.voice.name}\n"
                 f"Labels: {label_str}\n"
                 f"Category: {self.voice_tools.voice.category}\n"
+            )
+        elif self.agent_voice is not None:
+            return (
+                "\nVoice mode: **Enabled**\n"
+                "Assistant instructions:\n"
+                "- Format your output for speech, not reading.\n"
+                "- Avoid Markdown formatting, and other tokens that a text-to-speech engine might struggle with.\n"
+                "- Do not output URLs or links in this mode. Offer to read them for the user instead."
+                "- Keep your responses brief and conversational, allows the user to 'drill down' from a higher level rather than info dumping\n\n"
+                f"Current speaking voice: {self.agent_voice}\n"
             )
         else:
             return (

@@ -18,10 +18,17 @@ class ChatSessionManager:
         """
         Initializes a new instance of ChatSessionManager with default values.
         """
-        self.chat_session: Optional[ChatSession] = None  # Holds the current chat session
-        self.user: Optional[ChatUser] = None  # Holds the chat user
-        self.is_new_session: bool = True  # New session flag
-        self.is_new_user: bool = True  # New user flag
+        self.is_new_user: bool = True
+        self.is_new_session: bool = True
+        self.user: Optional[ChatUser] = None
+        self.chat_session: Optional[ChatSession] = None
+
+    @property
+    def active_memory(self):
+        return self.chat_session.active_memory
+
+    async def add_message(self, msg: MemoryMessage):
+        return await self.chat_session.add_message(msg)
 
     async def delete_session(self, session_id: str = None) -> None:
         """

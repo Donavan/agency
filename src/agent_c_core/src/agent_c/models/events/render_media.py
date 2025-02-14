@@ -17,3 +17,5 @@ class RenderMediaEvent(SessionEvent):
     name: Optional[str] = None
     content: Optional[str] = None
     content_bytes: Optional[bytes] = None
+    sent_by_class: Optional[str] = None
+    sent_by_function: Optional[str] = None

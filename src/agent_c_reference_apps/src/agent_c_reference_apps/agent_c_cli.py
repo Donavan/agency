@@ -3,11 +3,13 @@ import queue
 import logging
 import argparse
 import threading
+from typing import Optional, List
 
 from dotenv import load_dotenv
 
 from agent_c.models.input import AudioInput
 from agent_c.models.input.image_input import ImageInput
+from agent_c_tools import LocalStorageWorkspace
 
 # Note: we load the env file here so that it's loaded when we start loading the libs that depend on API KEYs.   I'm looking at you Eleven Labs
 load_dotenv(override=True)
@@ -58,7 +60,7 @@ class CLIChat:
         self.__init_events()
         self.logger: logging.Logger = self.__setup_logging()
         self.user_id = kwargs['user_id']
-        self.session_id: Union[str, None] = kwargs.get('session_id', None)
+        self.session_id: Optional[str] = kwargs.get('session_id', None)
         self.audio_cues = AudioCues()
         self.agent_voice: Optional[str] = kwargs.get('agent_voice', None)
         self.voice_model: str = kwargs.get('voice_model_name', 'gpt-4o-audio-preview')
@@ -82,8 +84,8 @@ class CLIChat:
         # "Assistant Personality" allows the user to change the tone of the responses as long as the change doesn't conflict with rules in the
         #                         `Operating Guidelines` portion of the prompt. So "from not on talk like a pirate" works just fine.
         self.user_prefs: List[UserPreference] = [AddressMeAsPreference(), AssistantPersonalityPreference()]
-        self.current_chat_log: Union[list[dict], None] = None
-
+        self.current_chat_log: Optional[list[dict]] = None
+        self.can_use_tools = True
 
     def __init_workspaces(self):
         self.logger.debug("Initializing Workspaces...")
@@ -130,7 +132,7 @@ class CLIChat:
         self.current_chat_log = None
 
         # The toolchest holds all the toolsets for the session
-        self.tool_chest: Union[ToolChest, None] = None
+        self.tool_chest: Optional[ToolChest] = None
 
         # The tool cache allows the different toolsets to make use of a shared disk cache.
         self.tool_cache_dir = kwargs.get("tool_cache_dir", ".tool_cache")
@@ -143,10 +145,9 @@ class CLIChat:
         """
         await self.__init_session()
 
-        if self.backend == 'claude':
-            await self.__init_claude_chat_agent(self.prompt)
-        else:
-            await self.__init_gpt_chat_agent(self.prompt)
+        agent_cls = ClaudeChatAgent if self.backend == 'claude' else GPTChatAgent
+
+        await self.__init_chat_agent(agent_cls, self.prompt)
 
         self.logger.debug("Initializing complete, starting UI.")
 
@@ -156,7 +157,14 @@ class CLIChat:
 
     async def __init_session(self):
         self.logger.debug("Initializing Session...")
-        self.session_manager = ChatSessionManager()
+        if os.environ.get("ZEP_CE_KEY") or os.environ.get("ZEP_API_KEY"):
+            from agent_c.chat.zep_session_manager import ZepCESessionManager, ZepCloudSessionManager, AsyncZep
+            client = AsyncZep(api_key=os.environ.get("ZEP_API_KEY"))
+            cls = ZepCESessionManager if os.environ.get("ZEP_CE_KEY") else ZepCloudSessionManager
+            self.session_manager = cls(client, allow_auto_user_create=True)
+        else:
+            self.session_manager = ChatSessionManager()
+
         await self.session_manager.init(self.user_id, self.session_id)
         self.session_id = self.session_manager.chat_session.session_id
 
@@ -176,23 +184,13 @@ class CLIChat:
         # In this reference app we're not supplying a tool_classes parameter so it will grab the "kitchen sink"
         # of all tool classes that have been registered.
         self.tool_chest = ToolChest()
-
-        # These are the default and extra options for the various toolsets, since the toolsets all use kwargs
-        # we can send them the whole bag of options without worry.
         tool_opts = {'tool_cache': self.tool_cache, 'session_manager': self.session_manager, 'user_preferences': self.user_prefs,
                      'workspaces': self.workspaces, 'streaming_callback': self.chat_callback}
 
-        self.logger.debug("Initializing GPT Chat Agent... Initializing toolsets...")
+        self.logger.debug("Initializing Chat Agent... Initializing toolsets...")
         await self.tool_chest.init_tools(**tool_opts)
 
-        # The prompt sections are grouped into "operational" and informational categories.
-        # Note the XML tag as the template for the Core Instruction template, by default the core instruction set template
-        # contains stuff that make talking to a development agent harder, so we shortcircuit it here BUT we have to have the XML tag there
-        # That tag anchors the critical parts of the prompt into a logical group that the model can "hold on to" easier.
-        # this also provides us a way to CLEARLY delineate between things WHICH MUST BE FOLLOWED and things that are informational
-        # or (more importantly) USER generated.  By establishing 'operating guidelines' as a thing we can make the model evaluate its output
-        # as well as user requests based on them with far greater accuracy and reliability.
-        self.logger.debug("Initializing GPT Chat Agent... Initializing sections...")
+        self.logger.debug("Initializing Chat Agent... Initializing sections...")
         operating_sections = [
             CoreInstructionSection(template="<operating_guidelines>\n"),
             PersonaSection(template=persona_prompt),
@@ -204,42 +202,16 @@ class CLIChat:
         # Anything outside the operating guidelines is basically helpful information for the model to know.
         # These are demo sections that tell the model a little about the user as well as things like the current date / time.
         info_sections = [HelpfulInfoStartSection(),
-                         EnvironmentInfoSection(session_manager=self.session_manager, voice_tools=self.tool_chest.active_tools.get('voice')),
+                         EnvironmentInfoSection(session_manager=self.session_manager, voice_tools=self.tool_chest.active_tools.get('voice'), agent_voice=self.agent_voice),
                          UserBioSection(session_manager=self.session_manager)]
 
-        self.logger.debug("Initializing GPT Chat Agent... Initializing agent...")
+        self.logger.debug("Initializing Chat Agent... Initializing agent...")
         # FINALLY we create the agent
-        self.agent: GPTChatAgent = GPTChatAgent(prompt_builder=PromptBuilder(sections=operating_sections + info_sections),
-                                                model_name=self.model_name,
-                                                tool_chest=self.tool_chest,
-                                                streaming_callback=self.chat_callback,
-                                                output_format=self.agent_output_format)
-
-    async def __init_claude_chat_agent(self, persona_prompt: str):
-        self.logger.debug("Initializing Claude Chat Agent...")
-        operating_sections = [
-            CoreInstructionSection(template="<operating_guidelines>\n"),
-            PersonaSection(template=persona_prompt),
-            EndOperatingGuideLinesSection()
-        ]
-
-        self.tool_chest = ToolChest()
-
-        # These are the default and extra options for the various toolsets, since the toolsets all use kwargs
-        # we can send them the whole bag of options without worry.
-        tool_opts = {'tool_cache': self.tool_cache, 'session_manager': self.session_manager, 'user_preferences': self.user_prefs,
-                     'workspaces': self.workspaces, 'streaming_callback': self.chat_callback}
-
-        await self.tool_chest.init_tools(**tool_opts)
-
-        # These are demo sections that tell the model a little about the user as well as things like the current date / time.
-        info_sections = [HelpfulInfoStartSection(),
-                         EnvironmentInfoSection(session_manager=self.session_manager, voice_tools=None),
-                         UserBioSection(session_manager=self.session_manager)]
-
-        # FINALLY we create the agent
-        self.agent: ClaudeChatAgent = ClaudeChatAgent(prompt_builder=PromptBuilder(sections=operating_sections + info_sections), model_name=self.model_name,
-                                                      streaming_callback=self.chat_callback, output_format=self.agent_output_format)
+        self.agent: GPTChatAgent = agent_cls(prompt_builder=PromptBuilder(sections=operating_sections + info_sections),
+                                             model_name=self.model_name,
+                                             tool_chest=self.tool_chest,
+                                             streaming_callback=self.chat_callback,
+                                             output_format=self.agent_output_format)
 
     def __setup_logging(self) -> logging.Logger:
         """
@@ -283,15 +255,20 @@ class CLIChat:
         into the PromptBuilder chain
         """
         memory_summary = ""
-        if self.session_manager.chat_session.active_memory is not None:
-            memory = self.session_manager.chat_session.active_memory
+        memory_context = ""
+        if self.session_manager.active_memory is not None:
+            memory = self.session_manager.active_memory
             if memory.summary is not None:
                 memory_summary = memory.summary.content
+            if memory.context is not None:
+                memory_context = memory.context
 
         return {"session_id": self.session_id,
                 "current_user_username": self.session_manager.user.user_id,
                 "current_user_name": self.session_manager.user.first_name,
-                "session_summary": memory_summary}
+                "session_summary": memory_summary,
+                "session_context": memory_context,
+                "agent_voice": self.agent_voice}
 
     async def __core_input_loop(self):
         """

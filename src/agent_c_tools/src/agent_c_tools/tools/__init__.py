@@ -8,4 +8,5 @@ from agent_c_tools.tools.agent_memory import *
 from agent_c_tools.tools.user_bio import *
 from agent_c_tools.tools.web import *
 from agent_c_tools.tools.weather import *
+from agent_c_tools.tools.random_number import *
 

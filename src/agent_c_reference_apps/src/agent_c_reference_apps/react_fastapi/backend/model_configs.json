@@ -1,0 +1,152 @@
+{
+  "vendors": [
+    {
+      "vendor": "openai",
+      "models": [
+        {
+          "id": "gpt-4o",
+          "model_type": "chat",
+          "ui_name": "GPT-4o",
+          "description": "Latest GPT-4 OpenAI model for chat interactions.",
+          "parameters": {
+            "temperature": {
+              "default": 0.5,
+              "min": 0,
+              "max": 2,
+              "required": true
+            },
+            "max_tokens": {
+              "default": 4096,
+              "required": false
+            }
+          },
+          "capabilities": {
+            "supports_tools": true,
+            "multi_modal": true
+          },
+          "allowed_inputs": {
+            "image": true,
+            "video": false,
+            "audio": false,
+            "file": false
+          }
+        },
+        {
+          "id": "gpt-4o-audio-preview",
+          "model_type": "chat",
+          "ui_name": "GPT-4o Audio Preview",
+          "description": "Latest GPT-4 OpenAI model for audio interactions.",
+          "parameters": {
+            "temperature": {
+              "default": 0.5,
+              "min": 0,
+              "max": 2,
+              "required": true
+            },
+            "max_tokens": {
+              "default": 4096,
+              "required": false
+            }
+          },
+          "capabilities": {
+            "supports_tools": true,
+            "multi_modal": true
+          },
+          "allowed_inputs": {
+            "image": true,
+            "video": false,
+            "audio": true,
+            "file": false
+          }
+        },
+        {
+          "id": "o1-mini",
+          "model_type": "reasoning",
+          "ui_name": "GPT-o1 mini",
+          "description": "Reasoning model o1.",
+          "parameters": {
+            "reasoning_effort": {
+              "default": "medium",
+              "values": ["low", "medium", "high"],
+              "required": true
+            },
+            "max_tokens": {
+              "default": 4096,
+              "required": false
+            }
+          },
+          "capabilities": {
+            "supports_tools": true,
+            "multi_modal": true
+          },
+          "allowed_inputs": {
+            "image": true,
+            "video": false,
+            "audio": false,
+            "file": false
+          }
+        },
+        {
+          "id": "o3-mini",
+          "model_type": "reasoning",
+          "ui_name": "GPT-o3 mini",
+          "description": "Reasoning model o3.",
+          "parameters": {
+            "reasoning_effort": {
+              "default": "medium",
+              "values": ["low", "medium", "high"],
+              "required": true
+            },
+            "max_tokens": {
+              "default": 4096,
+              "required": false
+            }
+          },
+          "capabilities": {
+            "supports_tools": true,
+            "multi_modal": true
+          },
+          "allowed_inputs": {
+            "image": true,
+            "video": false,
+            "audio": false,
+            "file": false
+          }
+        }
+      ]
+    },
+    {
+      "vendor": "claude",
+      "models": [
+        {
+          "id": "claude-3-5-sonnet-latest",
+          "model_type": "chat",
+          "ui_name": "Claude 3.5 Sonnet Latest",
+          "description": "Latest Claude 3.5 Sonnet model for chat interactions.",
+          "parameters": {
+            "temperature": {
+              "default": 0.5,
+              "min": 0,
+              "max": 1,
+              "required": true
+            },
+            "max_tokens": {
+              "default": 8192,
+              "required": true
+            }
+          },
+          "capabilities": {
+            "supports_tools": true,
+            "multi_modal": true
+          },
+          "allowed_inputs": {
+            "image": true,
+            "video": false,
+            "audio": false,
+            "file": false
+          }
+        }
+      ]
+    }
+  ]
+}

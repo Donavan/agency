@@ -42,5 +42,9 @@ class ChatMemory(BaseModel):
     token_count: Optional[int] = None
 
     @property
+    def context(self) -> Optional[str]:
+        return None
+
+    @property
     def inference_messages(self) -> List[Dict[str, Any]]:
         return [{"role": d.role, "content": d.content} for d in self.messages]

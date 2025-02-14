@@ -24,7 +24,7 @@ class AudioInput(FileInput):
     format: str = Field("wav")
     sample_rate: Optional[int] = Field(None, description="The sample rate of the audio content.")
     channels: Optional[int] = Field(None, description="The number of channels in the audio content.")
-
+    transcript: Optional[str] = Field(None, description="The transcript of the audio content.")
 
     def __init__(self, **data):
         if 'content_type' not in data:

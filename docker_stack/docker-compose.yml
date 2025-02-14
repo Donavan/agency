@@ -1,99 +1,29 @@
-version: "3.7"
+version: '3.8'
+
 services:
-  db:
-    image: ghcr.io/getzep/postgres:latest
-    container_name: zep-postgres
-    restart: on-failure
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-    #build:
-    #  context: .
-    #  dockerfile: Dockerfile.postgres
-    networks:
-      - zep-network
-    healthcheck:
-      test: [ "CMD", "pg_isready", "-q", "-d", "postgres", "-U", "postgres" ]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    ports:
-      - "5433:5432"
-  redis:
-    image: redis:alpine
-    restart: on-failure
-    volumes:
-      - redis-data:/data
-    ports:
-      - "6380:6379"
-  nlp:
-    image: ghcr.io/getzep/zep-nlp-server:latest
-    container_name: zep-nlp
-    environment:
-        - ENABLE_EMBEDDINGS=false
-    restart: on-failure
-    networks:
-      - zep-network
-    healthcheck:
-      test: timeout 10s bash -c ':> /dev/tcp/127.0.0.1/5557' || exit 1
-      interval: 5s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-    ports:
-      - "5557:5557"
-  zep:
-    image: ghcr.io/getzep/zep:latest
-    container_name: zep
-    restart: on-failure
-    depends_on:
-        db:
-          condition: service_healthy
-        nlp:
-          condition: service_healthy
-    ports:
-        - "8001:8000"
-    volumes:
-      - ./zep.config.yml:/app/config.yaml
-    environment:
-      - ZEP_STORE_POSTGRES_DSN=postgres://postgres:postgres@db:5432/postgres?sslmode=disable
-      - ZEP_NLP_SERVER_URL=http://nlp:5557
-      - ZEP_EXTRACTORS_DOCUMENTS_EMBEDDINGS_SERVICE=openai
-      - ZEP_EXTRACTORS_DOCUMENTS_EMBEDDINGS_DIMENSIONS=1536
-      - ZEP_EXTRACTORS_MESSAGES_EMBEDDINGS_SERVICE=openai
-      - ZEP_EXTRACTORS_MESSAGES_EMBEDDINGS_DIMENSIONS=1536
-      - ZEP_EXTRACTORS_MESSAGES_SUMMARIZER_EMBEDDINGS_SERVICE=openai
-      - ZEP_EXTRACTORS_MESSAGES_SUMMARIZER_EMBEDDINGS_DIMENSIONS=1536
-    env_file:
-      - .env # Store your OpenAI API key here as ZEP_OPENAI_API_KEY
-    healthcheck:
-      test: timeout 10s bash -c ':> /dev/tcp/127.0.0.1/8000' || exit 1
-      interval: 5s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    networks:
-      - zep-network
   weaviate:
     command:
-    - --host
-    - 0.0.0.0
-    - --port
-    - '8080'
-    - --scheme
-    - http
+      - --host
+      - 0.0.0.0
+      - --port
+      - '8080'
+      - --scheme
+      - http
     image: cr.weaviate.io/semitechnologies/weaviate:1.24.4
     ports:
-    - 8080:8080
-    - 50051:50051
+      - "8080:8080"
+      - "50051:50051"
     volumes:
-    - weaviate_data:/var/lib/weaviate
+      - weaviate_data:/var/lib/weaviate
     restart: on-failure
     env_file:
       - .env
     environment:
       LIMIT_RESOURCES: 'true'
       QUERY_DEFAULTS_LIMIT: 25
+      AUTHENTICATION_APIKEY_VALUE: ${AUTHENTICATION_APIKEY_ALLOWED_KEYS}
+      AUTHENTICATION_APIKEY_ALLOWED_KEYS: ${AUTHENTICATION_APIKEY_ALLOWED_KEYS}
+      AUTHENTICATION_APIKEY_USERS: ${AUTHENTICATION_APIKEY_USERS}
       AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'false'
       AUTHENTICATION_APIKEY_ENABLED: 'true'
       PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
@@ -102,13 +32,5 @@ services:
       CLUSTER_HOSTNAME: 'node1'
       AUTOSCHEMA_ENABLED: 'false'
 
-configs:
-  config:
-    file: ./zep.config.yaml
-networks:
-  zep-network:
-    driver: bridge
 volumes:
-  zep-db:
-  redis-data:
   weaviate_data:

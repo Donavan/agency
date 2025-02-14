@@ -1,4 +1,6 @@
+# LEGACY DOCUMENT
 # The `Agent C` Compose stack
+
 
 The Docker Compose file will stand up the services needed for development with the Agent C reference app and tools. There's a bit of configuration needed before launching it for the first time that we'll cover below.  
 
@@ -17,20 +19,6 @@ The [Zep](https://www.getzep.com/) stack makes up the majority of the compose fi
 
 NOTE:  Zep is exposed on port 8001 in this stack not 8000.
 
-### Postgres w/pgVector
-This is the backend database for Zep.  It's exposed up here for the folks working on chat analytics stuff to get easy access.
-
-NOTE: This service is exposed on 5433 in this stack not 5432 so as not to conflict with any existing postgres you might have running.
-
-### Zep NLP Service
-This is their tool that does NER and what not.  
-
-NOTE: Exposed on 5557.
-
-### Redis
-Not technically required just yet, but will be used by tools that need background processing will use this.
-
-NOTE: Exposed on 6380 instead of 6379 to avoid port conflicts.
 
 ## Initial configuration
 The file `example.env` contains placeholders for the values you will need to provide. In order to provide those values you will need to [download a small tool](https://github.com/getzep/zepcli/releases) from the Zep GitHub page. 

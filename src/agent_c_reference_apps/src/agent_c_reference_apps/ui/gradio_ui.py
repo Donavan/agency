@@ -734,7 +734,8 @@ class GradioChat:
         # These are demo sections that tell the model a little about the user as well as things like the current date / time.
         info_sections = [HelpfulInfoStartSection(),
                          EnvironmentInfoSection(session_manager=self.session_manager,
-                                                voice_tools=self.tool_chest.active_tools.get('voice')),
+                                                voice_tools=self.tool_chest.active_tools.get('voice'),
+                                                agent_voice=self.agent_voice),
                          UserBioSection(session_manager=self.session_manager)]
 
         self.logger.debug("Initializing GPT Chat Agent... Initializing agent...")
@@ -772,7 +773,7 @@ class GradioChat:
 
         # These are demo sections that tell the model a little about the user as well as things like the current date / time.
         info_sections = [HelpfulInfoStartSection(),
-                         EnvironmentInfoSection(session_manager=self.session_manager, voice_tools=None),
+                         EnvironmentInfoSection(session_manager=self.session_manager, voice_tools=None, agent_voice=self.agent_voice),
                          UserBioSection(session_manager=self.session_manager)]
 
         # FINALLY we create the agent
