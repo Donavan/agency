@@ -7,6 +7,9 @@ from typing import Optional, List
 
 from dotenv import load_dotenv
 
+from agent_c.agents.factory.agent_factory import AgentFactory
+from agent_c.agents.factory.agent_interface import AgentInterface
+from agent_c.models.agent_factory_request import AgentFactoryRequest, AgentParams
 from agent_c.models.input import AudioInput
 from agent_c.models.input.image_input import ImageInput
 from agent_c_tools import LocalStorageWorkspace
@@ -59,6 +62,9 @@ class CLIChat:
     def __init__(self, **kwargs):
         self.__init_events()
         self.logger: logging.Logger = self.__setup_logging()
+        self._process_task: Optional[asyncio.Task] = None
+        self.ai: Optional[AgentInterface] = None
+        self.agent_factory: AgentFactory = AgentFactory(backends=['openai', 'claude'])
         self.user_id = kwargs['user_id']
         self.session_id: Optional[str] = kwargs.get('session_id', None)
         self.audio_cues = AudioCues()
@@ -138,7 +144,6 @@ class CLIChat:
         self.tool_cache_dir = kwargs.get("tool_cache_dir", ".tool_cache")
         self.tool_cache = ToolCache(cache_dir=self.tool_cache_dir)
 
-
     async def run(self):
         """
         Initializes the console and starts the input loop to interact with the user.
@@ -171,7 +176,7 @@ class CLIChat:
     def __print_session_banner(self):
         self.chat_ui.show_session_info(self.session_manager)
 
-    async def __init_gpt_chat_agent(self, persona_prompt: str):
+    async def __init_chat_agent(self, agent_cls, persona_prompt: str):
         """
         This sets up the chat agent for the current session.
         Here's where we declare the toolsets we want to use with the agent as well as how our system prompt will look.
@@ -180,9 +185,6 @@ class CLIChat:
             persona_prompt (str): The prompt to initialize the ChatAgent with.
         """
         self.logger.debug("Initializing GPT Chat Agent...")
-        # Declare a "tool chest" of toolsets for the model.
-        # In this reference app we're not supplying a tool_classes parameter so it will grab the "kitchen sink"
-        # of all tool classes that have been registered.
         self.tool_chest = ToolChest()
         tool_opts = {'tool_cache': self.tool_cache, 'session_manager': self.session_manager, 'user_preferences': self.user_prefs,
                      'workspaces': self.workspaces, 'streaming_callback': self.chat_callback}
@@ -207,11 +209,17 @@ class CLIChat:
 
         self.logger.debug("Initializing Chat Agent... Initializing agent...")
         # FINALLY we create the agent
-        self.agent: GPTChatAgent = agent_cls(prompt_builder=PromptBuilder(sections=operating_sections + info_sections),
-                                             model_name=self.model_name,
-                                             tool_chest=self.tool_chest,
-                                             streaming_callback=self.chat_callback,
-                                             output_format=self.agent_output_format)
+        agent_req = AgentFactoryRequest(agent_params=AgentParams(backend=self.backend, model_name=self.model_name))
+
+        self.ai = self.agent_factory.create_agent(agent_req)
+        self.agent = self.ai.agent_obj
+        self._process_task = asyncio.create_task(self._process_queue())
+
+        # self.agent = agent_cls(prompt_builder=PromptBuilder(sections=operating_sections + info_sections),
+        #                        model_name=self.model_name,
+        #                        tool_chest=self.tool_chest,
+        #                        streaming_callback=self.chat_callback,
+        #                        output_format=self.agent_output_format)
 
     def __setup_logging(self) -> logging.Logger:
         """
@@ -237,6 +245,22 @@ class CLIChat:
             logging.getLogger(log).setLevel(logging.WARN)
 
         return logger
+
+    async def _process_queue(self):
+        """Main processing loop for chat stream events"""
+        while not self.exit_event.is_set():
+            if not self.ai.output_queue.empty():
+                try:
+                    event = await self.ai.output_queue.get()
+                except asyncio.CancelledError:
+                    break
+
+                if event is None:
+                    break
+                await self.chat_callback(event)
+            else:
+                await asyncio.sleep(0.01)
+
 
     async def chat_callback(self, event):
         """
@@ -314,7 +338,7 @@ class CLIChat:
 
                 await self.agent.chat(session_manager=self.session_manager, user_message=user_message, prompt_metadata=await self.__build_prompt_metadata(),
                                       messages=self.current_chat_log, output_format=self.agent_output_format, images=image_inputs, audio=audio_inputs,
-                                      voice=self.agent_voice)
+                                      voice=self.agent_voice, chat_callback=self.chat_callback)
 
                 await self.session_manager.flush()
             except (EOFError, KeyboardInterrupt):

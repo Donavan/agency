@@ -145,66 +145,68 @@ class BaseAgent:
 
         return {'session_id': session_id, 'role': agent_role}
 
-    async def _raise_event(self, event):
+    async def _raise_event(self, event, callback: Optional[Callable[[ChatEvent], Awaitable[None]]] = None):
         """
         Raise a chat event to the event stream.
         """
-        if not self.streaming_callback:
+        handler = callback or self.streaming_callback
+        if not handler:
             return
         try:
-            await self.streaming_callback(event)
+            await handler(event)
         except Exception as e:
             logging.exception(f"Streaming callback exploded: {e}")
             return
 
-    async def _raise_system_event(self, content: str, **data):
+    async def _raise_system_event(self, content: str, callback=None, **data):
         """
         Raise a system event to the event stream.
         """
 
-        await self._raise_event(MessageEvent(role="system", content=content, session_id=data.get("session_id", "none")))
+        await self._raise_event(MessageEvent(role="system", content=content, session_id=data.get("session_id", "none")),
+                                callback)
 
-    async def _raise_completion_start(self, comp_options, **data):
+    async def _raise_completion_start(self, comp_options, callback=None, **data):
         """
         Raise a completion start event to the event stream.
         """
         completion_options: dict = copy.deepcopy(comp_options)
         completion_options.pop("messages", None)
 
-        await self._raise_event(CompletionEvent(running=True, completion_options=completion_options, **data))
+        await self._raise_event(CompletionEvent(running=True, completion_options=completion_options, **data), callback)
 
-    async def _raise_completion_end(self, comp_options, **data):
+    async def _raise_completion_end(self, comp_options, callback=None, **data):
         """
         Raise a completion start event to the event stream.
         """
         completion_options: dict = copy.deepcopy(comp_options)
         completion_options.pop("messages", None)
 
-        await self._raise_event(CompletionEvent(running=False, completion_options=completion_options, **data))
+        await self._raise_event(CompletionEvent(running=False, completion_options=completion_options, **data), callback)
 
-    async def _raise_tool_call_start(self, tool_calls, **data):
-        await self._raise_event(ToolCallEvent(active=True, tool_calls=tool_calls, **data))
+    async def _raise_tool_call_start(self, tool_calls, callback=None, **data):
+        await self._raise_event(ToolCallEvent(active=True, tool_calls=tool_calls, **data), callback)
 
-    async def _raise_tool_call_delta(self, tool_calls, **data):
-        await self._raise_event(ToolCallDeltaEvent(tool_calls=tool_calls, **data))
+    async def _raise_tool_call_delta(self, tool_calls, callback=None, **data):
+        await self._raise_event(ToolCallDeltaEvent(tool_calls=tool_calls, **data), callback)
 
-    async def _raise_tool_call_end(self, tool_calls, tool_results, **data):
+    async def _raise_tool_call_end(self, tool_calls, tool_results, callback=None, **data):
         await self._raise_event(ToolCallEvent(active=False, tool_calls=tool_calls,
-                                              tool_results=tool_results,  **data))
+                                              tool_results=tool_results,  **data), callback)
 
-    async def _raise_interaction_start(self, **data):
+    async def _raise_interaction_start(self, callback=None, **data):
         iid = MnemonicSlugs.generate_slug(3)
-        await self._raise_event(InteractionEvent(started=True, id=iid, **data))
+        await self._raise_event(InteractionEvent(started=True, id=iid, **data), callback)
         return iid
 
-    async def _raise_interaction_end(self, **data):
-        await self._raise_event(InteractionEvent(started=False, **data))
+    async def _raise_interaction_end(self, callback=None, **data):
+        await self._raise_event(InteractionEvent(started=False, **data), callback)
 
-    async def _raise_text_delta(self, content: str, **data):
-        await self._raise_event(TextDeltaEvent(content=content, **data))
+    async def _raise_text_delta(self, content: str, callback=None, **data):
+        await self._raise_event(TextDeltaEvent(content=content, **data), callback)
 
-    async def _raise_history_event(self, messages: List[dict[str, Any]], **data):
-        await self._raise_event(HistoryEvent(messages=messages, **data))
+    async def _raise_history_event(self, messages: List[dict[str, Any]], callback=None, **data):
+        await self._raise_event(HistoryEvent(messages=messages, **data), callback)
 
     async def _exponential_backoff(self, delay: int) -> None:
         """

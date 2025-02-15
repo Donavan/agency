@@ -5,7 +5,7 @@ from agent_c.models.base import BaseModel
 
 class AgentParams(BaseModel):
     # Immutable BaseAgent parameters
-    backend: Literal["azure_oai", "gpt",
+    backend: Literal["azure_openai", "openai",
                      "claude", "claude_aws"] = Field("gpt",
                                                      description="The backend to use for the agent, "
                                                                  "valid options are 'azure_oai', 'gpt', 'claude', 'claude_aws'. "
