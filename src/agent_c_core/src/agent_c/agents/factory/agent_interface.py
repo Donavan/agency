@@ -17,6 +17,9 @@ class AgentInterface:
         self._process_task: Optional[asyncio.Task] = None
         self.logger = logger or logging.getLogger(__name__)
 
+    @property
+    def default_completion_params(self):
+        return self.agent_obj.__class__.default_completion_params()
 
     async def start(self):
         """Start processing queues"""
