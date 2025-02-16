@@ -10,7 +10,7 @@ import webbrowser
 from queue import Queue
 from rich.rule import Rule
 from rich.align import Align
-from typing import List, Union, Optional
+from typing import List, Union
 from rich.columns import Columns
 from rich.console import Console
 from rich.markdown import Markdown
@@ -18,8 +18,8 @@ from prompt_toolkit import PromptSession
 from prompt_toolkit.history import FileHistory
 from prompt_toolkit.key_binding import KeyBindings
 
-from agent_c.models.input import TextInput
-from agent_c.models.input.audio_input import AudioInput
+from agent_c.models.interaction.input import TextInput
+from agent_c.models.interaction.input import AudioInput
 from agent_c.util.oai_audio import OAIAudioPlayerAsync
 from agent_c_reference_apps.util.audio_cues import AudioCues
 from agent_c_reference_apps.ui.markdown_render import MarkdownTokenRenderer

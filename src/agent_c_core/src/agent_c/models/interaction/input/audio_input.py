@@ -6,11 +6,11 @@ import mimetypes
 import numpy as np
 import soundfile as sf
 
-
-from typing import Union, Optional
 from pathlib import Path
 from pydantic import Field
-from agent_c.models.input.file_input import FileInput
+from typing import Union, Optional
+
+from agent_c.models.interaction.input.file_input import FileInput
 
 
 class AudioInput(FileInput):

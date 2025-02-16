@@ -5,7 +5,7 @@ load_dotenv(override=True)
 
 from agent_c.agents.gpt import GPTChatAgent
 from agent_c_tools.tools.workspaces.local_storage import LocalStorageWorkspace
-from agent_c.models.input.image_input import ImageInput
+from agent_c.models.interaction.input import ImageInput
 
 
 async def main():

@@ -1,18 +1,15 @@
 import os
-import queue
 import logging
 import argparse
 import threading
-from typing import Optional, List
 
 from dotenv import load_dotenv
 
 from agent_c.agents.factory.agent_factory import AgentFactory
 from agent_c.agents.factory.agent_interface import AgentInterface
-from agent_c.models.agent_factory_request import AgentFactoryRequest, AgentParams
-from agent_c.models.input import AudioInput
-from agent_c.models.input.image_input import ImageInput
-from agent_c_tools import LocalStorageWorkspace
+from agent_c.models.agent_factory_request import AgentCreationOptions, AgentRuntimeParams
+from agent_c.models.interaction.input import AudioInput
+from agent_c.models.interaction.input import ImageInput
 
 # Note: we load the env file here so that it's loaded when we start loading the libs that depend on API KEYs.   I'm looking at you Eleven Labs
 load_dotenv(override=True)
@@ -25,9 +22,8 @@ from agent_c import GPTChatAgent, ClaudeChatAgent, ChatSessionManager, ToolChest
 
 
 from agent_c.util import debugger_is_active
-from agent_c_tools.tools.user_preferences import AssistantPersonalityPreference, AddressMeAsPreference, UserPreference #noqa
 from agent_c.prompting import CoreInstructionSection, HelpfulInfoStartSection, EndOperatingGuideLinesSection, \
-    EnvironmentInfoSection, PromptBuilder, PersonaSection
+    EnvironmentInfoSection, PersonaSection
 
 
 
@@ -209,7 +205,7 @@ class CLIChat:
 
         self.logger.debug("Initializing Chat Agent... Initializing agent...")
         # FINALLY we create the agent
-        agent_req = AgentFactoryRequest(agent_params=AgentParams(backend=self.backend, model_name=self.model_name))
+        agent_req = AgentCreationOptions(runtime=AgentRuntimeParams(backend=self.backend, model_name=self.model_name))
 
         self.ai = self.agent_factory.create_agent(agent_req)
         self.agent = self.ai.agent_obj
@@ -333,14 +329,14 @@ class CLIChat:
                 if user_message is None and len(image_inputs) > 0:
                     user_message = "<admin_msg>If it's not clear from prior messages, ask the user what to do with this image.</admin_msg>"
 
-                # We wait till the last minute to refresh out data from Zep so we can allow it to summarize and whatnot in the background
-                await self.session_manager.update()
+                req = {'session_manager': self.session_manager, 'user_message': user_message,
+                       'prompt_metadata': await self.__build_prompt_metadata(),
+                       'messages':self.current_chat_log, 'images':image_inputs, 'audio':audio_inputs,
+                       'voice':self.agent_voice}
 
-                await self.agent.chat(session_manager=self.session_manager, user_message=user_message, prompt_metadata=await self.__build_prompt_metadata(),
-                                      messages=self.current_chat_log, output_format=self.agent_output_format, images=image_inputs, audio=audio_inputs,
-                                      voice=self.agent_voice, chat_callback=self.chat_callback)
+                await self.ai.input_queue.put(req)
 
-                await self.session_manager.flush()
+                #await self.session_manager.flush()
             except (EOFError, KeyboardInterrupt):
                 # Handle exit upon EOF (Ctrl-D) or Keyboard Interrupt (Ctrl-C)
                 break
@@ -402,7 +398,7 @@ def main():
     model: str = args.model
     backend: str = 'openai'
     if args.claude and args.model == 'gpt-4o':
-        model = 'claude-3-sonnet-20240229'
+        model = 'claude-3-5-sonnet-20241022'
 
     if args.claude:
         backend = 'claude'

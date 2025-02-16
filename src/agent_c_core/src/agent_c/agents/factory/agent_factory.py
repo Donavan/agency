@@ -2,7 +2,7 @@ import logging
 
 from agent_c.agents.factory.agent_interface import AgentInterface
 from agent_c.agents.gpt import GPTChatAgent, AzureOpenAIChatAgent
-from agent_c.models.agent_factory_request import AgentFactoryRequest
+from agent_c.models.agent_factory_request import AgentCreationOptions
 from agent_c.agents.claude import ClaudeChatAgent, ClaudeBedrockChatAgent
 
 class AgentFactory:
@@ -29,18 +29,18 @@ class AgentFactory:
             raise ValueError("No valid backends available")
 
 
-    def __backend_for_request(self, request: AgentFactoryRequest):
-        if request.agent_params.backend not in self.__backend_to_agent_map:
-            raise ValueError(f"Invalid backend  {request.agent_params.backend}")
-        elif request.agent_params.backend not in self._backend_client_map:
-            raise ValueError(f"No client available for backend {request.agent_params.backend}")
+    def __backend_for_request(self, request: AgentCreationOptions):
+        if request.runtime.backend not in self.__backend_to_agent_map:
+            raise ValueError(f"Invalid backend  {request.runtime.backend}")
+        elif request.runtime.backend not in self._backend_client_map:
+            raise ValueError(f"No client available for backend {request.runtime.backend}")
 
-        return self.__backend_to_agent_map.get(request.agent_params.backend)
+        return self.__backend_to_agent_map.get(request.runtime.backend)
 
 
-    def create_agent(self, request: AgentFactoryRequest):
+    def create_agent(self, request: AgentCreationOptions):
         agent_cls = self.__backend_for_request(request)
-        agent_client = self._backend_client_map[request.agent_params.backend]
-        agent_obj = agent_cls(client=agent_client, **request.agent_params.model_dump())
+        agent_client = self._backend_client_map[request.runtime.backend]
+        agent_obj = agent_cls(client=agent_client, **request.runtime.model_dump())
 
         return  AgentInterface(agent_obj)

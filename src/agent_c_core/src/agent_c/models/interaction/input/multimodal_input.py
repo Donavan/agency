@@ -1,8 +1,8 @@
 from pydantic import Field
 from typing import List, Union
 
-from agent_c.models.input.base import BaseInput
-from agent_c.models.input import (
+from agent_c.models.interaction.input import BaseInput
+from agent_c.models.interaction.input import (
     AudioInput,
     FileInput,
     ImageInput,

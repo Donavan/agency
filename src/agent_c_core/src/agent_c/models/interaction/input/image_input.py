@@ -4,7 +4,7 @@ import logging
 import tempfile
 from typing import Any
 
-from agent_c.models.input.file_input import FileInput
+from agent_c.models.interaction.input import FileInput
 
 
 class ImageInput(FileInput):

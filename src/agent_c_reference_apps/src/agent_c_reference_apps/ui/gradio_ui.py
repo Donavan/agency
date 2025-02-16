@@ -15,10 +15,10 @@ from typing import Union, List, Optional
 from dotenv import load_dotenv
 from spacy.tokens.doc import defaultdict
 
-from agent_c.models.input.audio_input import AudioInput
+from agent_c.models.interaction.input import AudioInput
 from agent_c.toolsets import Toolset
 
-from agent_c.models.input.image_input import ImageInput
+from agent_c.models.interaction.input import ImageInput
 from agent_c.prompting import DynamicPersonaSection
 
 from agent_c.util.response_format import align_tool_calls, question_response, system_prompt, \

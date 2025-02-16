@@ -2,14 +2,13 @@ import os
 import json
 
 import openai
-import tiktoken
 import asyncio
 import logging
 
 
 from collections import defaultdict
 from openai import AsyncOpenAI, AsyncStream, AsyncAzureOpenAI
-
+from pydantic import Field
 
 from tiktoken import Encoding, encoding_for_model
 from openai.types.chat import  ChatCompletionChunk
@@ -18,12 +17,29 @@ from openai.types.chat import  ChatCompletionChunk
 from typing import Any, Dict, List, Union, Optional
 
 from agent_c.chat.session_manager import ChatSessionManager
-from agent_c.models.input.audio_input import AudioInput
+from agent_c.models.completion.common import CommonCompletionParams
+from agent_c.models.interaction.input import AudioInput
 from agent_c.models.events.chat import ReceivedAudioDeltaEvent
-from agent_c.models.input.image_input import ImageInput
+from agent_c.models.interaction.input import ImageInput
 from agent_c.util.token_counter import TokenCounter
 from agent_c.agents.base import BaseAgent
 
+class GPTCompletionParams(CommonCompletionParams):
+    """
+    Parameters for interacting with the GPT agent.
+    """
+    tool_choice: Optional[Union[str, dict]] = Field(None, description="The tool choice to use for the interaction, See OpenAI API docs for details")
+    voice:  Optional[str] = None
+    presence_penalty: Optional[float] = Field(0, description="Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.")
+    seed: Optional[int] = Field(None, description="This feature is in Beta. If specified, Open AI will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result. Determinism is not guaranteed")
+    service_tier: Optional[str] = Field(None, description="See Open AI Docs for details")
+    stop: Optional[Union[str, List[str]]] = Field(None, description="Up to 4 sequences where the API will stop generating further tokens.")
+
+    def __init__(self, **data: Any) -> None:
+        if 'model_name' not in data:
+            data['model_name'] = os.environ.get("GPT_INTERACTION_MODEL", "gpt-4o")
+
+        super().__init__(**data)
 
 class TikTokenTokenCounter(TokenCounter):
     """
@@ -47,6 +63,10 @@ class GPTChatAgent(BaseAgent):
         # Temporary until all the models support this
         if self.model_name in self.__class__.REASONING_MODELS:
             self.root_message_role = "developer"
+
+    @classmethod
+    def default_completion_params(cls) -> GPTCompletionParams:
+        return GPTCompletionParams()
 
     @property
     def token_counter(self) -> TokenCounter:
@@ -318,6 +338,140 @@ class GPTChatAgent(BaseAgent):
 
         return messages
 
+    async def interact(self, **kwargs) -> List[dict[str, Any]]:
+        opts = await self.__interaction_setup(**kwargs)
+        messages: List[dict[str, str]] = opts['completion_opts']['messages']
+        session_manager: Union[ChatSessionManager, None] = kwargs.get("session_manager", None)
+        tool_chest = opts['tool_chest']
+        interacting: bool = True
+
+        delay = 1  # Initial delay between retries
+
+        async with self.semaphore:
+            interaction_id = await self._raise_interaction_start(**opts['callback_opts'])
+            while interacting and delay < self.max_delay:
+                try:
+                    tool_calls = []
+                    stop_reason: Optional[str] = None
+                    audio_id: Optional[str] = None
+                    await self._raise_completion_start(opts["completion_opts"], **opts['callback_opts'])
+                    response: AsyncStream[ChatCompletionChunk] = await self.client.chat.completions.create(**opts['completion_opts'])
+
+                    collected_messages: List[str] = []
+                    try:
+                        async for chunk in response:
+
+                            if chunk.choices is None:
+                                continue
+
+                            if len(chunk.choices) == 0:
+                                # If there are no choices, we're done receiving chunks
+                                input_tokens = chunk.usage.prompt_tokens
+                                output_tokens = chunk.usage.completion_tokens
+                                await self._raise_completion_end(opts["completion_opts"], stop_reason=stop_reason,
+                                                                 input_tokens=input_tokens, output_tokens=output_tokens,
+                                                                 **opts['callback_opts'])
+
+                                if stop_reason == 'tool_calls' or ((stop_reason=='stop' or stop_reason is None) and len(tool_calls)):
+                                    # We have tool calls to make
+                                    await self._raise_tool_call_start(tool_calls, vendor="open_ai", **opts['callback_opts'])
+
+                                    try:
+                                        # Execute the tool calls
+                                        result_messages = await self.__tool_calls_to_messages(tool_calls, tool_chest)
+                                    except Exception as e:
+                                        logging.exception(f"Failed calling toolsets {e}")
+                                        result_messages = []
+                                        await self._raise_tool_call_end(tool_calls, result_messages,
+                                                                        vendor="open_ai", **opts['callback_opts'])
+
+                                        await self._raise_system_event(f"An error occurred while processing tool calls. {e}", )
+
+                                    if len(result_messages):
+                                        await self._raise_tool_call_end(tool_calls, result_messages[1:],
+                                                                        vendor="open_ai", **opts['callback_opts'])
+                                        messages.extend(result_messages)
+                                        await self._raise_history_event(messages, **opts['callback_opts'])
+                                else:
+                                    # The model has finished, it's side of the interaction so it's time to exit
+                                    output_text = "".join(collected_messages)
+                                    if audio_id is not None:
+                                        messages.append(await self._save_audio_interaction_to_session(session_manager, audio_id, output_text))
+                                    else:
+                                        messages.append(await self._save_interaction_to_session(session_manager, output_text))
+                                    await self._raise_history_event(messages, **opts['callback_opts'])
+                                    await self._raise_interaction_end(id=interaction_id, **opts['callback_opts'])
+                                    interacting = False
+                            else:
+                                first_choice = chunk.choices[0]
+                                # If we have a finish reason record it and break for the usage payload to be sent
+                                # before taking any real action
+                                if first_choice.finish_reason is not None:
+                                    stop_reason = first_choice.finish_reason
+                                    continue
+
+                                # Anything else is either a delta for a tool call or a message
+                                if first_choice.delta.tool_calls is not None:
+                                    self.__handle_tool_use_fragment(first_choice.delta.tool_calls[0], tool_calls)
+                                elif first_choice.delta.content is not None:
+                                    collected_messages.append(first_choice.delta.content)
+                                    await self._raise_text_delta(first_choice.delta.content, **opts['callback_opts'])
+                                elif first_choice.delta.model_extra.get('audio', None) is not None:
+                                    audio_delta = first_choice.delta.model_extra['audio']
+                                    if audio_id is None:
+                                        audio_id = audio_delta.get('id', None)
+
+                                    transcript = audio_delta.get('transcript', None)
+                                    if transcript is not None:
+                                        collected_messages.append(transcript)
+                                        await self._raise_text_delta(transcript, **opts['callback_opts'])
+
+                                    b64_audio = audio_delta.get('data', None)
+                                    if b64_audio is not None:
+                                        await self._raise_event(ReceivedAudioDeltaEvent(content_type="audio/L16", id=audio_id,
+                                                                                        content=b64_audio, **opts['callback_opts']))
+                                    elif transcript is None:
+                                        #logging.error("No audio data found in response")
+                                        continue
+
+                    except openai.APIError as e:
+                        logging.exception("OpenAIError occurred while streaming responses: %s", e)
+                        await self._raise_system_event(f"An error occurred while streaming responses. {e}\n. Backing off delay at {delay} seconds.",
+                                              **opts['callback_opts'])
+                        if delay >= self.max_delay:
+                            raise
+                        await self._exponential_backoff(delay)
+                        delay *= 2
+
+                except openai.BadRequestError as e:
+                    logging.exception("Invalid request occurred: %s", e)
+                    await self._raise_system_event(f"Invalid request error, see logs for details.", **opts['callback_opts'])
+                    for message in messages:
+                        print(json.dumps(message))
+                    await self._raise_completion_end(opts["completion_opts"], stop_reason="exception", **opts['callback_opts'])
+                    raise
+                except openai.APITimeoutError as e:
+                    await self._raise_system_event(f"Open AI Timeout error.  Will retry in {delay} seconds", **opts['callback_opts'])
+                    logging.exception("OpenAIError occurred: %s", e)
+                    if delay >= self.max_delay:
+                        raise
+                    await self._exponential_backoff(delay)
+                    delay *= 2
+                except openai.InternalServerError as e:
+                    logging.exception("Open AI InternalServerError occurred: %s", e)
+                    await self._raise_system_event(f"Open AI internal server error.  Will retry in {delay} seconds", **opts['callback_opts'])
+                    if delay >= self.max_delay:
+                        raise
+                    await self._exponential_backoff(delay)
+                    delay *= 2
+                except Exception as e:
+                    s = e.__str__()
+                    logging.exception("Error occurred during chat completion: %s", e)
+                    await self._raise_system_event(f"Exception in chat completion {s}", **opts['callback_opts'])
+                    await self._raise_completion_end(opts["completion_opts"], stop_reason="exception", **opts['callback_opts'])
+                    raise
+
+        return messages
 
 
     @staticmethod

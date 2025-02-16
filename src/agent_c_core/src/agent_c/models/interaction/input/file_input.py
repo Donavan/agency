@@ -5,7 +5,7 @@ from pathlib import Path
 from pydantic import Field
 from typing import Optional, Union
 
-from agent_c.models.input.base import BaseInput
+from agent_c.models.interaction.input import BaseInput
 
 
 class FileInput(BaseInput):

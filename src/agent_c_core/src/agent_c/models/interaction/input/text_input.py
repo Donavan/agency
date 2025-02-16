@@ -1,4 +1,4 @@
-from agent_c.models.input.base import BaseInput
+from agent_c.models.interaction.input import BaseInput
 
 class TextInput(BaseInput):
     """Model representing text input with content.

@@ -8,10 +8,11 @@ from typing import Any, Dict, List, Union, Optional, Callable, Awaitable
 
 from agent_c.chat import ChatSessionManager
 from agent_c.models import ChatEvent, ImageInput, MemoryMessage
-from agent_c.models.input.audio_input import AudioInput
+from agent_c.models.completion.common import CommonCompletionParams
+from agent_c.models.interaction.input import AudioInput
 from agent_c.models.events import MessageEvent, ToolCallEvent, InteractionEvent, TextDeltaEvent, HistoryEvent, CompletionEvent, ToolCallDeltaEvent
 from agent_c.prompting import PromptBuilder
-from agent_c.toolsets import ToolChest, Toolset
+from agent_c.toolsets import ToolChest
 from agent_c.util import MnemonicSlugs
 from agent_c.util.token_counter import TokenCounter
 
@@ -70,6 +71,10 @@ class BaseAgent:
             self._token_counter = TokenCounter()
 
         return self._token_counter
+
+    @classmethod
+    def default_completion_params(cls) -> CommonCompletionParams:
+        raise NotImplementedError
 
     @classmethod
     def default_client(cls):

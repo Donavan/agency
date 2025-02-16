@@ -53,7 +53,6 @@ class AgentInterface:
         while self._running:
             if not self.input_queue.empty():
                 try:
-
                     input_message = await self.input_queue.get()
                 except asyncio.CancelledError:
                     break

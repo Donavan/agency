@@ -1,15 +1,31 @@
 import asyncio
 import copy
 import logging
+import os
 
-from typing import Any, List, Union, Dict
+from typing import Any, List, Union, Dict, Optional
 from anthropic import AsyncAnthropic, APITimeoutError, Anthropic, AnthropicBedrock
+from pydantic import Field
 
 from agent_c.agents.base import BaseAgent
 from agent_c.chat.session_manager import ChatSessionManager
-from agent_c.models.input.audio_input import AudioInput
-from agent_c.models.input.image_input import ImageInput
+from agent_c.models.completion.common import CommonCompletionParams
+from agent_c.models.interaction.input import AudioInput
+from agent_c.models.interaction.input import ImageInput
 from agent_c.util.token_counter import TokenCounter
+
+class ClaudeCompletionParams(CommonCompletionParams):
+    """
+    Parameters for interacting with the Claude agent.
+    """
+    # TODO: Add fields
+
+    def __init__(self, **data: Any) -> None:
+        if 'model_name' not in data:
+            data['model_name'] = os.environ.get("CLAUDE_INTERACTION_MODEL", "claude-3-5-sonnet-20241022")
+
+        super().__init__(**data)
+
 
 class ClaudeChatAgent(BaseAgent):
     CLAUDE_MAX_TOKENS: int = 8192
@@ -30,7 +46,9 @@ class ClaudeChatAgent(BaseAgent):
 
             return response.input_tokens
 
-
+    @classmethod
+    def default_completion_params(cls) -> ClaudeCompletionParams:
+        return ClaudeCompletionParams()
 
     @property
     def token_counter(self) -> TokenCounter:
