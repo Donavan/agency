@@ -7,7 +7,8 @@ from asyncio import Semaphore
 from typing import Any, Dict, List, Union, Optional, Callable, Awaitable
 
 from agent_c.chat import ChatSessionManager
-from agent_c.models import ChatEvent, ImageInput, MemoryMessage
+from agent_c.models import ChatEvent, MemoryMessage
+from agent_c.models.interaction.input import ImageInput
 from agent_c.models.completion.common import CommonCompletionParams
 from agent_c.models.interaction.input import AudioInput
 from agent_c.models.events import MessageEvent, ToolCallEvent, InteractionEvent, TextDeltaEvent, HistoryEvent, CompletionEvent, ToolCallDeltaEvent

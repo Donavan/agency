@@ -26,7 +26,7 @@ from agent_c.agents.base import BaseAgent
 
 class GPTCompletionParams(CommonCompletionParams):
     """
-    Parameters for interacting with the GPT agent.
+    Vendor specific parameters for interacting with the GPT agent.
     """
     tool_choice: Optional[Union[str, dict]] = Field(None, description="The tool choice to use for the interaction, See OpenAI API docs for details")
     voice:  Optional[str] = None

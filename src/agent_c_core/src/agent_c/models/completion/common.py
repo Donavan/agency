@@ -1,9 +1,7 @@
 from pydantic import Field
-from typing import Optional, List
+from typing import Optional
 
 from agent_c.models.base import BaseModel
-from agent_c.models.interaction.input.base import BaseInput
-
 
 class CommonCompletionParams(BaseModel):
     model_name: str = Field(..., description="The name of the model to use for the interaction")
