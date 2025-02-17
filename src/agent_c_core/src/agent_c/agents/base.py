@@ -50,20 +50,21 @@ class BaseAgent:
         self._token_counter = None
         self.can_use_tools: bool = True
         self.supports_multimodal: bool = True
-        self.concurrency_limit: int = kwargs.get("concurrency_limit", 3)
+        self.concurrency_limit: int = kwargs.get("concurrency_limit", os.environ.get("BASE_AGENT_CONCURRENCY_LIMIT", 3))
+        self.max_delay: int = kwargs.get("max_delay", int(os.environ.get("BASE_AGENT_MAX_DELAY", '10')))
         self.semaphore: Semaphore = asyncio.Semaphore(self.concurrency_limit)
+        self.streaming_callback: Optional[Callable[[ChatEvent], Awaitable[None]]] = kwargs.get("streaming_callback", None)
+        self.client: Any = kwargs.get("client", self.__class__.default_client())
+
+        # everything below here is essentially to support older code that hasn't been updated yet
         self.model_name: str = kwargs.get("model_name")
-        self.client: Any = kwargs.get("client", None)
         self.temperature: float = kwargs.get("temperature", 0.5)
-        self.max_delay: int = kwargs.get("max_delay", 10)
         self.tool_chest: ToolChest = kwargs.get("tool_chest", ToolChest.default())
         self.prompt: Optional[str] = kwargs.get("prompt", None)
         self.prompt_builder: Optional[PromptBuilder] = kwargs.get("prompt_builder", None)
-        self.streaming_callback: Optional[Callable[[ChatEvent], Awaitable[None]]] = kwargs.get("streaming_callback", None)
         self.root_message_role: str =  kwargs.get( "root_message_role", os.environ.get("ROOT_MESSAGE_ROLE", "system"))
 
-        if self.client is None:
-            self.client = self.__class__.default_client()
+
 
     @property
     def token_counter(self) -> TokenCounter:

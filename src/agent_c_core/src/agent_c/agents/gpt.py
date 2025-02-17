@@ -59,6 +59,12 @@ class GPTChatAgent(BaseAgent):
         """
         Initialize ChatAgent object.
         """
+        if 'max_delay' not in kwargs:
+            kwargs['max_delay'] = int(os.environ.get("GPT_AGENT_MAX_DELAY", '10'))
+
+        if "concurrency_limit" not in kwargs:
+            kwargs['concurrency_limit'] = int(os.environ.get("GPT_AGENT_CONCURRENCY_LIMIT", '3'))
+
         super().__init__(**kwargs)
         # Temporary until all the models support this
         if self.model_name in self.__class__.REASONING_MODELS:

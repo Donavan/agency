@@ -46,6 +46,18 @@ class ClaudeChatAgent(BaseAgent):
 
             return response.input_tokens
 
+    def __init__(self, **kwargs) -> None:
+        """
+        Initialize ChatAgent object.
+        """
+        if 'max_delay' not in kwargs:
+            kwargs['max_delay'] = int(os.environ.get("CLAUDE_AGENT_MAX_DELAY", '10'))
+
+        if "concurrency_limit" not in kwargs:
+            kwargs['concurrency_limit'] = int(os.environ.get("CLAUDE_AGENT_CONCURRENCY_LIMIT", '3'))
+
+        super().__init__(**kwargs)
+
     @classmethod
     def default_completion_params(cls) -> ClaudeCompletionParams:
         return ClaudeCompletionParams()

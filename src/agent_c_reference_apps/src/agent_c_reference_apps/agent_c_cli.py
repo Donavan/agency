@@ -4,11 +4,12 @@ import argparse
 import threading
 
 from dotenv import load_dotenv
+from torchgen.packaged.autograd.load_derivatives import used_gradient_indices
 
 from agent_c.agents.factory.agent_factory import AgentFactory
 from agent_c.agents.factory.agent_interface import AgentInterface
 from agent_c.models.agent_factory_request import AgentCreationOptions, AgentRuntimeParams
-from agent_c.models.interaction.input import AudioInput
+from agent_c.models.interaction.input import AudioInput, BaseInput
 from agent_c.models.interaction.input import ImageInput
 
 # Note: we load the env file here so that it's loaded when we start loading the libs that depend on API KEYs.   I'm looking at you Eleven Labs
@@ -269,26 +270,28 @@ class CLIChat:
         # all this thing is doing is managing the output so that Markdown renders correctly.
         await self.chat_ui.chat_event(event)
 
+    async def __get_user_input(self) -> Optional[BaseInput]:
+        """
+        Get user input from the console.
+        """
+        self.input_active_event.set()
+        user_input = await self.chat_ui.get_user_input()
+        self.input_active_event.clear()
+
+        if user_input.type == 'text':
+            if await self.cmd_handler.handle_command(user_input.content, self):
+                return None
+
+        return user_input
+
+
     async def __build_prompt_metadata(self):
         """
-        Pretty much all of this could be in a prompt sections instead but it's left as an example of how to inject data
-        into the PromptBuilder chain
+            For testing purposes, in this app
         """
-        memory_summary = ""
-        memory_context = ""
-        if self.session_manager.active_memory is not None:
-            memory = self.session_manager.active_memory
-            if memory.summary is not None:
-                memory_summary = memory.summary.content
-            if memory.context is not None:
-                memory_context = memory.context
 
-        return {"session_id": self.session_id,
-                "current_user_username": self.session_manager.user.user_id,
-                "current_user_name": self.session_manager.user.first_name,
-                "session_summary": memory_summary,
-                "session_context": memory_context,
-                "agent_voice": self.agent_voice}
+
+        return {"marko": "polo"}
 
     async def __core_input_loop(self):
         """
@@ -304,31 +307,7 @@ class CLIChat:
         self.logger.debug("Starting core input loop...")
         while not self.exit_event.is_set():
             try:
-                self.input_active_event.set()
-                user_input = await self.chat_ui.get_user_input()
-                self.input_active_event.clear()
-                user_message: Optional[str] = None
-                image_inputs: List[ImageInput] = []
-                audio_inputs: List[AudioInput] = []
-
-                if user_input.type == 'text':
-                    if await self.cmd_handler.handle_command(user_input.content, self):
-                        continue
-                    user_message = user_input.content
-                elif user_input.type == 'audio':
-                    audio_inputs.append(user_input)
-                elif user_input.type == 'multimodal':
-                    for modal_content in user_input.content:
-                        if modal_content.type == 'text':
-                            user_message = modal_content.content
-                        elif modal_content.type == 'image':
-                            image_inputs.append(modal_content)
-                        elif modal_content.type == 'audio':
-                            audio_inputs.append(modal_content)
-
-                if user_message is None and len(image_inputs) > 0:
-                    user_message = "<admin_msg>If it's not clear from prior messages, ask the user what to do with this image.</admin_msg>"
-
+                user_input = await self.__get_user_input()
                 req = {'session_manager': self.session_manager, 'user_message': user_message,
                        'prompt_metadata': await self.__build_prompt_metadata(),
                        'messages':self.current_chat_log, 'images':image_inputs, 'audio':audio_inputs,
