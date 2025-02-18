@@ -24,6 +24,10 @@ class ActiveAgentInteraction(BaseModel):
     messages: list = []  # This will be in out format
     want_cancel: bool = False
 
+    @property
+    def full_id(self):
+        return f"{self.session_id}.{self.interaction_id}"
+
 class AgentInterface:
     def __init__(self, agent_factory: AgentFactory, queue_cls = AsyncQueue, logger=None):
         self._agent_cache: dict[str, BaseAgent] = {}
@@ -67,8 +71,7 @@ class AgentInterface:
     async def _handle_interaction_agent_output(self, event, interaction: ActiveAgentInteraction):
         pass
 
-    async def _service_interaction(self, interaction_id):
-        interaction = self._active_interactions[interaction_id]
+    async def _service_interaction(self, interaction: ActiveAgentInteraction):
         while True:
             if interaction.want_cancel:
                 break
@@ -83,13 +86,17 @@ class AgentInterface:
             else:
                 await asyncio.sleep(0.01)
 
-    async def _initiate_interaction(self, interaction: ActiveAgentInteraction):
+    async def _initiate_interaction(self, request: InteractionStartRequest):
         # TODO: 1. grab the session history from the session manager
         #       2. construct the message array in native format
         #       3. kick off the agent interaction
         #       4. start the service_interaction loop
         #
-        asyncio.create_task(self._service_interaction(interaction.interaction_id))
+        agent = self._agent_cache[request.interaction_id]
+        interaction = ActiveAgentInteraction(interaction_id=request.interaction_id, agent=agent)
+        self._active_interactions[request.interaction_id] = interaction
+
+        asyncio.create_task(self._service_interaction(interaction))
 
     async def _interaction_start(self, request: InteractionStartRequest):
         if request.backend not in self.factory.available_backends:
@@ -102,15 +109,12 @@ class AgentInterface:
         if request.interaction_id is None:
             request.interaction_id = MnemonicSlugs.generate_slug(3)
 
-        if request.backend in self._agent_cache:
-            agent = self._agent_cache[request.interaction_id]
-        else:
+        if request.backend not in self._agent_cache:
             agent = self.factory.create_agent_runtime(AgentCreationOptions(runtime=AgentRuntimeParams(backend=request.backend)))
             self._agent_cache[request.backend] = agent
 
+        asyncio.create_task(self._initiate_interaction(request))
 
-        self._active_interactions[request.interaction_id] = ActiveAgentInteraction(interaction_id=request.interaction_id,
-                                                                                   agent=agent)
 
 
 

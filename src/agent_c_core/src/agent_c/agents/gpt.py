@@ -102,7 +102,7 @@ class GPTChatAgent(BaseAgent):
 
 
 
-    async def __interaction_setup(self, **kwargs) -> dict[str, Any]:
+    async def __chat_interaction_setup(self, **kwargs) -> dict[str, Any]:
         json_mode: bool = kwargs.get("json_mode", False)
         model_name: str = kwargs.get("model_name", self.model_name)
         kwargs['prompt'] = kwargs.get('prompt', self.prompt)
@@ -206,7 +206,7 @@ class GPTChatAgent(BaseAgent):
 
         Returns: A list of messages from the chat.
         """
-        opts = await self.__interaction_setup(**kwargs)
+        opts = await self.__chat_interaction_setup(**kwargs)
         messages: List[dict[str, str]] = opts['completion_opts']['messages']
         session_manager: Union[ChatSessionManager, None] = kwargs.get("session_manager", None)
         tool_chest = opts['tool_chest']
@@ -340,8 +340,29 @@ class GPTChatAgent(BaseAgent):
 
         return messages
 
-    async def interact(self, **kwargs) -> List[dict[str, Any]]:
-        opts = await self.__interaction_setup(**kwargs)
+    @staticmethod
+    def _translate_completion_params(completion_params:Union[GPTCompletionParams, CommonCompletionParams]) -> dict[str, Any]:
+        """Convert a completion params object to a dictionary of options for the OpenAI API"""
+        opts = completion_params.model_dump(exclude_none=True, exclude={"type"})
+        opts['stream_options'] = {"include_usage": True}
+        opts['stream']: True
+
+        if 'user_name' in opts:
+            opts['user'] = opts.pop('user_name')
+
+        if 'voice' in opts:
+            opts['modalities'] = ["text", "audio"]
+            opts['audio'] = {"voice": opts.pop('voice'), "format": "pcm16"}
+
+        if 'max_tokens' in opts:
+            opts['max_completion_tokens'] = opts.pop('max_tokens')
+
+        return opts
+
+
+    async def interact(self, interaction_id: str, input_queue: asyncio.Queue, output_queue: asyncio.Queue,
+                       completion_params:Union[GPTCompletionParams, CommonCompletionParams], messages: list):
+        opts = await self.__chat_interaction_setup(**kwargs)
         messages: List[dict[str, str]] = opts['completion_opts']['messages']
         session_manager: Union[ChatSessionManager, None] = kwargs.get("session_manager", None)
         tool_chest = opts['tool_chest']
