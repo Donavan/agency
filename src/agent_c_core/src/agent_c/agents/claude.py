@@ -7,13 +7,11 @@ from typing import Any, List, Union, Dict
 from anthropic import AsyncAnthropic, APITimeoutError, Anthropic, AnthropicBedrock
 
 from agent_c.agents.base import BaseAgent
-from agent_c.models.interaction.tool_calls import CommonToolCall
 from agent_c.util.token_counter import TokenCounter
 from agent_c.chat.session_manager import ChatSessionManager
+from agent_c.models.interaction.tool_calls import CommonToolCall
 from agent_c.models.interaction.input import AudioInput, ImageInput
 from agent_c.models.completion.common import CommonCompletionParams
-
-
 
 class ClaudeCompletionParams(CommonCompletionParams):
     """
