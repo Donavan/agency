@@ -1,28 +1,24 @@
 import os
 import json
-
 import openai
 import asyncio
 import logging
 
-
-from collections import defaultdict
-from openai import AsyncOpenAI, AsyncStream, AsyncAzureOpenAI
 from pydantic import Field
-
+from collections import defaultdict
 from tiktoken import Encoding, encoding_for_model
 from openai.types.chat import  ChatCompletionChunk
-
-
 from typing import Any, Dict, List, Union, Optional
+from openai import AsyncOpenAI, AsyncStream, AsyncAzureOpenAI
 
-from agent_c.chat.session_manager import ChatSessionManager
-from agent_c.models.completion.common import CommonCompletionParams
-from agent_c.models.interaction.input import AudioInput
-from agent_c.models.events.chat import ReceivedAudioDeltaEvent
-from agent_c.models.interaction.input import ImageInput
-from agent_c.util.token_counter import TokenCounter
 from agent_c.agents.base import BaseAgent
+from agent_c.util.token_counter import TokenCounter
+from agent_c.models.interaction.input import AudioInput
+from agent_c.models.interaction.input import ImageInput
+from agent_c.chat.session_manager import ChatSessionManager
+from agent_c.models.events.chat import ReceivedAudioDeltaEvent
+from agent_c.models.completion.common import CommonCompletionParams
+
 
 class GPTCompletionParams(CommonCompletionParams):
     """

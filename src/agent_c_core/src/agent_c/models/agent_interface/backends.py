@@ -1,13 +1,10 @@
-from typing import List, Union
-
+from typing import Union
 from pydantic import Field
 
 from agent_c.agents.gpt import GPTCompletionParams
 from agent_c.agents.claude import ClaudeCompletionParams
 from agent_c.models.completion.common import CommonCompletionParams
 from agent_c.models.agent_interface.base import BaseInterfaceRequest, BaseInterfaceResponse
-
-
 
 class AvailableBackendsRequest(BaseInterfaceRequest):
     pass
