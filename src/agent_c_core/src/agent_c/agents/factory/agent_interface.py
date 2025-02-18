@@ -5,21 +5,19 @@ from typing import Optional
 
 from asyncio import Queue as AsyncQueue
 from agent_c.agents.base import BaseAgent
+from agent_c.agents.factory.agent_factory import AgentFactory
+from agent_c.models.agent_interface.backends import AvailableBackendsResponse
 
 
 class AgentInterface:
-    def __init__(self, agent_obj: BaseAgent, queue_cls = AsyncQueue, logger=None):
-        self.agent_obj = agent_obj
-        self.agent_obj.streaming_callback = self._chat_callback
+    def __init__(self, agent_factory: AgentFactory, queue_cls = AsyncQueue, logger=None):
+        self.factory = agent_factory
         self.input_queue = queue_cls()
         self.output_queue = queue_cls()
+
         self._running = False
         self._process_task: Optional[asyncio.Task] = None
         self.logger = logger or logging.getLogger(__name__)
-
-    @property
-    def default_completion_params(self):
-        return self.agent_obj.__class__.default_completion_params()
 
     async def start(self):
         """Start processing queues"""
@@ -29,6 +27,7 @@ class AgentInterface:
         self._running = True
         self._process_task = asyncio.create_task(self._process_queue())
         self.logger.info("Agent interface queue processing started")
+        self.output_queue.put_nowait(AvailableBackendsResponse(backends=self.factory.available_backends))
 
     async def stop(self):
         """Stop processing queues"""

@@ -1,20 +1,32 @@
+import copy
 import logging
-from typing import Literal, get_args
 
-from agent_c.agents.factory.agent_interface import AgentInterface
-from agent_c.agents.gpt import GPTChatAgent, AzureOpenAIChatAgent
+from typing import Literal, get_args, Union
+
+from agent_c.agents.gpt import GPTChatAgent, AzureOpenAIChatAgent, GPTCompletionParams
+from agent_c.models.completion.common import CommonCompletionParams
 from agent_c.models.agent_factory_request import AgentCreationOptions
-from agent_c.agents.claude import ClaudeChatAgent, ClaudeBedrockChatAgent
-
+from agent_c.agents.claude import ClaudeChatAgent, ClaudeBedrockChatAgent, ClaudeCompletionParams
 
 class AgentFactoryBackend:
+    """Defines available AI model backends and their string identifiers.
+
+    Attributes:
+        AZURE_OPENAI (str): "Constant" identifier for Azure OpenAI backend
+        OPENAI (str): "Constant" identifier for OpenAI backend
+        CLAUDE (str): "Constant" identifier for Claude backend
+        CLAUDE_AWS (str): "Constant" identifier for Claude AWS backend
+        VALID_BACKENDS (list[str]): List of all valid backend identifiers as strings
+        Name (Literal): Type hint for backend name strings tobe used for literal types.
+    """
+
     AZURE_OPENAI = "azure_openai"
     OPENAI = "openai"
     CLAUDE = "claude"
     CLAUDE_AWS = "claude_aws"
 
     VALID_BACKENDS = [AZURE_OPENAI, OPENAI, CLAUDE, CLAUDE_AWS]
-    Name = Literal[AZURE_OPENAI, OPENAI, CLAUDE, CLAUDE_AWS]
+    Name = Literal[AZURE_OPENAI, OPENAI, CLAUDE, CLAUDE_AWS] # noqa
 
 
 class AgentFactory:
@@ -28,11 +40,13 @@ class AgentFactory:
     def __init__(self, **kwargs):
         backends = kwargs.get('backends', list(get_args(AgentFactoryBackend.Name)))
         self._backend_client_map = {}
+        self._backend_completion_defaults: dict[str, Union[CommonCompletionParams, GPTCompletionParams, ClaudeCompletionParams]] = {}
 
         for backend in backends:
             try:
                 backend_cls = self.__backend_to_agent_map[backend]
                 self._backend_client_map[backend] = kwargs.get(f"{backend}_client", backend_cls.default_client())
+                self._backend_completion_defaults[backend] = backend_cls.default_completion_params()
             except Exception as e:
                 logging.warning(f"Failed to initialize backend {backend} with error {e}")
                 continue
@@ -40,6 +54,9 @@ class AgentFactory:
         if len(self._backend_client_map) == 0:
             raise ValueError("No valid backends available")
 
+    @property
+    def available_backends(self) -> dict[str, Union[CommonCompletionParams, GPTCompletionParams, ClaudeCompletionParams]]:
+        return copy.deepcopy(self._backend_completion_defaults)
 
     def __backend_for_request(self, request: AgentCreationOptions):
         if request.runtime.backend not in self.__backend_to_agent_map:
@@ -50,9 +67,9 @@ class AgentFactory:
         return self.__backend_to_agent_map.get(request.runtime.backend)
 
 
-    def create_agent(self, request: AgentCreationOptions):
+    def create_agent_runtime(self, request: AgentCreationOptions):
         agent_cls = self.__backend_for_request(request)
         agent_client = self._backend_client_map[request.runtime.backend]
         agent_obj = agent_cls(client=agent_client, **request.runtime.model_dump())
 
-        return  AgentInterface(agent_obj)
+        return agent_obj

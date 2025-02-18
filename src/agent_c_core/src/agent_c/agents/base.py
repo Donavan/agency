@@ -76,7 +76,7 @@ class BaseAgent:
 
     @classmethod
     def default_completion_params(cls) -> CommonCompletionParams:
-        raise NotImplementedError
+        return CommonCompletionParams(model_name="any")
 
     @classmethod
     def default_client(cls):
