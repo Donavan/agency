@@ -1,9 +1,9 @@
 from pydantic import Field
 from typing import Optional, List
 
-from agent_c.models.events.session_event import SessionEvent
+from agent_c.models.events.interaction import BaseInteractionEvent
 
-class InteractionEvent(SessionEvent):
+class InteractionEvent(BaseInteractionEvent):
     """
     Sent to notify the UI that an interaction has been initiated or completed.
     While an interaction is running, the UI should not allow input from the user.
@@ -15,7 +15,7 @@ class InteractionEvent(SessionEvent):
     id: str = Field(..., description="The ID of the interaction")
 
 
-class CompletionEvent(SessionEvent):
+class CompletionEvent(BaseInteractionEvent):
     """
     Sent to notify the UI that the completion call
     """
@@ -28,7 +28,7 @@ class CompletionEvent(SessionEvent):
     input_tokens: Optional[int] = Field(None, description="The number of tokens in the input")
     output_tokens: Optional[int] = Field(None, description="The number of tokens in the output")
 
-class MessageEvent(SessionEvent):
+class MessageEvent(BaseInteractionEvent):
     """
     Sent to notify the UI to display an entire message.
     """
@@ -38,7 +38,7 @@ class MessageEvent(SessionEvent):
     content: str = Field(..., description="The content of the message")
     format: str = Field("markdown", description="The format of the content, default is markdown")
 
-class TextDeltaEvent(SessionEvent):
+class TextDeltaEvent(BaseInteractionEvent):
     """
     Sent to notify the UI that a chunk of content text has been received.
     - Clients should handle this event by appending the content to the current message,
@@ -52,7 +52,7 @@ class TextDeltaEvent(SessionEvent):
     content: str = Field(..., description="A chunk of content text.")
     format: str = Field("markdown", description="The format of the content, default is markdown")
 
-class ReceivedAudioDeltaEvent(SessionEvent):
+class ReceivedAudioDeltaEvent(BaseInteractionEvent):
     """
     Sent to notify the UI that a chunk of audio has been received from the competion API.
     - Clients should handle this event by appending the audio to the current message,
@@ -66,7 +66,7 @@ class ReceivedAudioDeltaEvent(SessionEvent):
     content: str = Field(..., description="A base64s encoded chunk of audio data")
     content_type: str = Field("audio/L16", description="The type of audio data")
 
-class HistoryEvent(SessionEvent):
+class HistoryEvent(BaseInteractionEvent):
     """
     Sent to notify the UI that the message history has been updated.
     """

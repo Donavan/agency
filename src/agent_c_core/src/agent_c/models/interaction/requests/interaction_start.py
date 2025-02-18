@@ -16,3 +16,6 @@ class InteractionStartRequest(BaseInteractRequest):
     completion_params: Union[CommonCompletionParams, GPTCompletionParams, ClaudeCompletionParams] = Field(..., description="The completion parameters for your backend")
     user_input: List[BaseInput] = Field(..., description="The input from the user to the agent")
     property_bag: dict = Field({}, description="A dictionary of properties to pass to the agent runtime")
+
+class InteractionCancelRequest(BaseInteractRequest):
+    interaction_id: str = Field(..., description="The ID of the interaction to cancel")

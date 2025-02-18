@@ -7,10 +7,12 @@ from typing import Any, List, Union, Dict
 from anthropic import AsyncAnthropic, APITimeoutError, Anthropic, AnthropicBedrock
 
 from agent_c.agents.base import BaseAgent
+from agent_c.models.interaction.tool_calls import CommonToolCall
 from agent_c.util.token_counter import TokenCounter
 from agent_c.chat.session_manager import ChatSessionManager
 from agent_c.models.interaction.input import AudioInput, ImageInput
 from agent_c.models.completion.common import CommonCompletionParams
+
 
 
 class ClaudeCompletionParams(CommonCompletionParams):
@@ -56,6 +58,36 @@ class ClaudeChatAgent(BaseAgent):
             kwargs['concurrency_limit'] = int(os.environ.get("CLAUDE_AGENT_CONCURRENCY_LIMIT", '3'))
 
         super().__init__(**kwargs)
+
+    @classmethod
+    def transform_common_tool_calls(cls, tool_calls: List[CommonToolCall]) -> List[Dict]:
+        """
+        Transform a list of CommonToolCall objects into a list of dictionaries with renamed fields.
+
+        Args:
+            tool_calls: A list of CommonToolCall objects to transform
+
+        Returns:
+            List[Dict]: A list of dictionaries where 'arguments' is renamed to 'input'
+        """
+        return [{**{k: v for k, v in call.model_dump().items() if k != 'arguments'},
+                 'input': call.arguments} for call in tool_calls]
+
+    @classmethod
+    def export_tool_calls(cls, tool_calls: List[Dict]) -> List[CommonToolCall]:
+        """
+        Transform a list of dictionaries into CommonToolCall objects, converting 'input' back to 'arguments'.
+
+        Args:
+            tool_calls: A list of dictionaries containing tool call data with 'input' field
+
+        Returns:
+            List[CommonToolCall]: A list of CommonToolCall objects where 'input' is converted to 'arguments'
+        """
+        return [CommonToolCall(
+            **{k: v for k, v in call.items() if k != 'input'},
+            arguments=call.get('input', {})
+        ) for call in tool_calls]
 
     @classmethod
     def default_completion_params(cls) -> ClaudeCompletionParams:

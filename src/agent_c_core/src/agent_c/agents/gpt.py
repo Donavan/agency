@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Union, Optional
 from openai import AsyncOpenAI, AsyncStream, AsyncAzureOpenAI
 
 from agent_c.agents.base import BaseAgent
+from agent_c.models.events import ToolCallEvent
 from agent_c.util.token_counter import TokenCounter
 from agent_c.models.interaction.input import AudioInput
 from agent_c.models.interaction.input import ImageInput
@@ -359,18 +360,32 @@ class GPTChatAgent(BaseAgent):
 
         return opts
 
-
     async def interact(self, session_id: str,  interaction_id: str, input_queue: asyncio.Queue, output_queue: asyncio.Queue,
                        completion_params:Union[GPTCompletionParams, CommonCompletionParams], messages: list):
 
         opts = self._translate_completion_params(completion_params)
         interacting: bool = True
+        pending_tool_results: Optional[List] = None
+        client_wants_cancel: bool = False
+
+        async def process_queue():
+            nonlocal interacting, pending_tool_results, client_wants_cancel, self
+            while interacting:
+                try:
+                    event = await input_queue.get()
+                    if event.type == "interaction_cancel":
+                        client_wants_cancel = True
+                        interacting = False
+
+                    input_queue.task_done()
+                except Exception as e:
+                    logging.error(f"Error processing input queue: {e}")
 
         delay = 1  # Initial delay between retries
 
         async with self.semaphore:
             await output_queue.put(InteractionEvent(started=True, id=interaction_id, session_id=session_id))
-            while interacting and delay < self.max_delay:
+            while interacting and delay < self.max_delay and not client_wants_cancel:
                 try:
                     tool_calls = []
                     stop_reason: Optional[str] = None
@@ -392,14 +407,13 @@ class GPTChatAgent(BaseAgent):
                                 # If there are no choices, we're done receiving chunks
                                 input_tokens = chunk.usage.prompt_tokens
                                 output_tokens = chunk.usage.completion_tokens
-                                await self._raise_completion_end(opts["completion_opts"], stop_reason=stop_reason,
-                                                                 input_tokens=input_tokens, output_tokens=output_tokens,
-                                                                 **opts['callback_opts'])
+                                await output_queue.put(CompletionEvent(completion_options=opts, running=False, session_id=session_id,
+                                                                       stop_reason=stop_reason, input_tokens=input_tokens, output_tokens=output_tokens))
 
                                 if stop_reason == 'tool_calls' or ((stop_reason=='stop' or stop_reason is None) and len(tool_calls)):
                                     # We have tool calls to make
-                                    await self._raise_tool_call_start(tool_calls, vendor="open_ai", **opts['callback_opts'])
-
+                                    await output_queue.put(ToolCallEvent(tool_calls=tool_calls, vendor="open_ai", session_id=session_id,
+                                                                         active=True, interaction_id=interaction_id))
                                     try:
                                         # Execute the tool calls
                                         result_messages = await self.__tool_calls_to_messages(tool_calls, tool_chest)
