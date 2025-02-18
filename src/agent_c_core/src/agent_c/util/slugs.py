@@ -1,6 +1,8 @@
+import uuid
+import time
 import random
-from typing import Optional
 
+from typing import Optional
 
 class MnemonicSlugs:
     """
@@ -155,8 +157,11 @@ class MnemonicSlugs:
     @classmethod
     def generate_slug(cls, count: Optional[int] = None) -> str:
         if count is None:
-            count = 2
-        return "-".join(random.choices(cls._WORDS, k=count))
+            count = 3
+
+        seed = time.time_ns() ^ uuid.getnode()
+        rng = random.Random(seed)
+        return "-".join(rng.choices(cls._WORDS, k=count))
 
     @classmethod
     def from_number(cls, number: int):

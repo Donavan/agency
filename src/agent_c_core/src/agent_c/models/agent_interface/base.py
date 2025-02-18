@@ -10,7 +10,7 @@ class BaseInterfaceRequest(BaseModel):
 
     def __init__(self, **data: Any) -> None:
         if 'type' not in data:
-            data['type'] = to_snake_case(self.__class__.__name__.removesuffix('Request'))
+            data['type'] = to_snake_case(self.__class__.__name__)
 
         super().__init__(**data)
 

@@ -10,8 +10,6 @@ class AgentRuntimeParams(BaseModel):
                                                      description="The backend to use for the agent, "
                                                                  "valid options are 'azure_oai', 'gpt', 'claude', 'claude_aws'. "
                                                                  "Default is 'gpt'")
-    concurrency_limit: int = Field(3, description="The maximum number of concurrent "
-                                                         "requests to the completion API ths agent can make")
 
 class AgentCreationOptions(BaseModel):
     runtime: AgentRuntimeParams = Field(..., description="The parameters for the backend runtime agents will use")
