@@ -16,7 +16,7 @@ from agent_c.util.token_counter import TokenCounter
 from agent_c.models.interaction.input import AudioInput
 from agent_c.models.interaction.input import ImageInput
 from agent_c.chat.session_manager import ChatSessionManager
-from agent_c.models.events.chat import ReceivedAudioDeltaEvent
+from agent_c.models.events.chat import ReceivedAudioDeltaEvent, InteractionEvent, CompletionEvent
 from agent_c.models.completion.common import CommonCompletionParams
 
 
@@ -360,25 +360,26 @@ class GPTChatAgent(BaseAgent):
         return opts
 
 
-    async def interact(self, interaction_id: str, input_queue: asyncio.Queue, output_queue: asyncio.Queue,
+    async def interact(self, session_id: str,  interaction_id: str, input_queue: asyncio.Queue, output_queue: asyncio.Queue,
                        completion_params:Union[GPTCompletionParams, CommonCompletionParams], messages: list):
-        opts = await self.__chat_interaction_setup(**kwargs)
-        messages: List[dict[str, str]] = opts['completion_opts']['messages']
-        session_manager: Union[ChatSessionManager, None] = kwargs.get("session_manager", None)
-        tool_chest = opts['tool_chest']
+
+        opts = self._translate_completion_params(completion_params)
         interacting: bool = True
 
         delay = 1  # Initial delay between retries
 
         async with self.semaphore:
-            interaction_id = await self._raise_interaction_start(**opts['callback_opts'])
+            await output_queue.put(InteractionEvent(started=True, id=interaction_id, session_id=session_id))
             while interacting and delay < self.max_delay:
                 try:
                     tool_calls = []
                     stop_reason: Optional[str] = None
                     audio_id: Optional[str] = None
-                    await self._raise_completion_start(opts["completion_opts"], **opts['callback_opts'])
-                    response: AsyncStream[ChatCompletionChunk] = await self.client.chat.completions.create(**opts['completion_opts'])
+
+                    await output_queue.put(CompletionEvent(completion_options=opts, running=True, session_id=session_id))
+                    opts['messages'] = messages
+
+                    response: AsyncStream[ChatCompletionChunk] = await self.client.chat.completions.create(**opts)
 
                     collected_messages: List[str] = []
                     try:
